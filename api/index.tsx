@@ -107,25 +107,47 @@ async function getTokenBalance(ownerAddress: string) {
   const data = await alchemy.core.getTokenBalances(ownerAddress, [
     "0x8C9037D1Ef5c6D1f6816278C7AAF5491d24CD527",
   ]);
-
-  console.log("Token balance for Address");
-  console.log(data);
-
   const hexBalance = data.tokenBalances[0].tokenBalance;
   const decimalBalance = BigInt(hexBalance).toString();
-  const tokenBalanceInEther = formatUnits(decimalBalance, 18);
-  console.log(`Token Balance in USD: ${tokenBalanceInEther}`);
+  const tokenBalanceInMoxie = formatUnits(decimalBalance, 18);
+  return tokenBalanceInMoxie;
+}
+
+async function getMoxieBalanceInUSD() {
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-cg-demo-api-key": "CG-xYGQqBU93QcE7LW14fhd953Z	",
+    },
+  };
+
+  const response = await fetch(
+    "https://api.coingecko.com/api/v3/simple/price?ids=moxie&vs_currencies=usd",
+    options
+  );
+  const data = await response.json();
+  return data.moxie.usd;
 }
 
 app.frame("/check-moxie-amount", async (c) => {
-  // const verifiedAddresses = c.var.interactor;
-  // for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses) {
-  //   // console.log(address);
-  //   // const contractAddress = await getVestingContractAddress(address);
-  //   // console.log(contractAddress);
-  //   const balance = await getTokenBalance(address);
-  //   console.log(balance);
-  // }
+  const verifiedAddresses = c.var.interactor;
+  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses) {
+    // console.log(address);
+    // const contractAddress = await getVestingContractAddress(address);
+    // console.log(contractAddress);
+    const balance = await getTokenBalance(address);
+    const balanceInUSD = await getMoxieBalanceInUSD();
+    console.log(balance, balanceInUSD);
+    const totalValue = parseInt(balance) * balanceInUSD;
+    const totalValueFormatted = totalValue.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    console.log(totalValueFormatted);
+  }
 
   return c.res({
     image: "/img-moxie-amount",
