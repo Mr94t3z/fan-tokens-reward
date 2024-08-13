@@ -1,26 +1,17 @@
-import { Button, Frog, parseEther, TextInput } from "frog";
+import { Button, Frog, TextInput } from "frog";
 import { devtools } from "frog/dev";
 import { serveStatic } from "frog/serve-static";
 import { neynar } from "frog/middlewares";
 import { handle } from "frog/vercel";
 import { Box, Column, Image, Text, vars } from "../lib/ui.js";
-import { publicClient } from "../lib/config.js";
+import { moxieSmartContract } from "../lib/contracts.js";
 import { decodeEventLog, type Address } from "viem";
 import { JSX } from "frog/jsx/jsx-runtime";
 import { JSXNode, Child } from "hono/jsx";
 import { HtmlEscapedString } from "hono/utils/html";
 import { gql, GraphQLClient } from "graphql-request";
-import { Alchemy, Network } from "alchemy-sdk";
 import { formatUnits } from "viem";
-const config = {
-  apiKey: "Uc0JyghgIojnMdCrxI_G2md91ZbRiQbe",
-  network: Network.BASE_MAINNET,
-};
-const alchemy = new Alchemy(config);
-// Uncomment to use Edge Runtime.
-// export const config = {
-//   runtime: 'edge',
-// }
+
 
 export const app = new Frog({
   assetsPath: "/",
@@ -45,7 +36,6 @@ export const app = new Frog({
 );
 
 app.frame("/", async (c) => {
-  const { buttonValue, inputText, status } = c;
 
   return c.res({
     image: (
@@ -96,20 +86,17 @@ async function getVestingContractAddress(address: string) {
   };
 
   try {
-    const data = await graphQLClient.request(query, variable);
+    const data: { tokenLockWallets: { address: string }[] } = await graphQLClient.request(query, variable);
     return data.tokenLockWallets[0].address;
   } catch (e) {
-    throw new Error(e);
+    throw new Error(String(e));
   }
 }
 
 async function getTokenBalance(ownerAddress: string) {
-  const data = await alchemy.core.getTokenBalances(ownerAddress, [
-    "0x8C9037D1Ef5c6D1f6816278C7AAF5491d24CD527",
-  ]);
-  const hexBalance = data.tokenBalances[0].tokenBalance;
+  const hexBalance = await moxieSmartContract.read.balanceOf([ownerAddress as `0x${string}`]);
   const decimalBalance = BigInt(hexBalance).toString();
-  const tokenBalanceInMoxie = formatUnits(decimalBalance, 18);
+  const tokenBalanceInMoxie = formatUnits(BigInt(decimalBalance), 18);
   return tokenBalanceInMoxie;
 }
 
@@ -132,7 +119,7 @@ async function getMoxieBalanceInUSD() {
 
 app.frame("/check-moxie-amount", async (c) => {
   const verifiedAddresses = c.var.interactor;
-  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses) {
+  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ?? []) {
     // console.log(address);
     // const contractAddress = await getVestingContractAddress(address);
     // console.log(contractAddress);
@@ -146,7 +133,7 @@ app.frame("/check-moxie-amount", async (c) => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    console.log(totalValueFormatted);
+    console.log('totalValueFormatted:', totalValueFormatted);
   }
 
   return c.res({
