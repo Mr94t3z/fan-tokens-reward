@@ -5,7 +5,6 @@ import { neynar } from "frog/middlewares";
 import { handle } from "frog/vercel";
 import { Box, Column, Image, Text, vars } from "../lib/ui.js";
 import { moxieSmartContract } from "../lib/contracts.js";
-import { decodeEventLog, type Address } from "viem";
 import { JSX } from "frog/jsx/jsx-runtime";
 import { JSXNode, Child } from "hono/jsx";
 import { HtmlEscapedString } from "hono/utils/html";
