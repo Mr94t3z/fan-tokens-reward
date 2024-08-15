@@ -11,7 +11,6 @@ import { HtmlEscapedString } from "hono/utils/html";
 import { gql, GraphQLClient } from "graphql-request";
 import { formatUnits } from "viem";
 
-
 export const app = new Frog({
   assetsPath: "/",
   basePath: "/api/frame",
@@ -35,7 +34,6 @@ export const app = new Frog({
 );
 
 app.frame("/", async (c) => {
-
   return c.res({
     image: (
       <Box
@@ -47,7 +45,7 @@ app.frame("/", async (c) => {
         padding="48"
       >
         <Box>
-          <img src="/moxielogo.png" width="185" height="50" />
+          <img src="/moxielogo.png" width="200" height="50" />
         </Box>
         <Box
           grow
@@ -55,16 +53,34 @@ app.frame("/", async (c) => {
           justifyContent="center"
           alignHorizontal="center"
           alignVertical="center"
+          gap="16"
         >
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+          <Box
+            backgroundColor="modal"
+            padding-left="18"
+            padding-right="18"
+            padding-bottom="18"
+            padding-top="18"
+          >
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               Reward your Fans
             </Text>
           </Box>
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            buy and burn moxie to reward fans
+          </Text>
         </Box>
       </Box>
     ),
-    intents: [<Button action="/check-moxie-amount">Select the amount</Button>],
+    intents: [
+      <TextInput placeholder="Search for a user or channel" />,
+      <Button action="/search-user-channel">Search 🔎 </Button>,
+    ],
   });
 });
 
@@ -85,7 +101,8 @@ async function getVestingContractAddress(address: string) {
   };
 
   try {
-    const data: { tokenLockWallets: { address: string }[] } = await graphQLClient.request(query, variable);
+    const data: { tokenLockWallets: { address: string }[] } =
+      await graphQLClient.request(query, variable);
     return data.tokenLockWallets[0].address;
   } catch (e) {
     throw new Error(String(e));
@@ -93,7 +110,9 @@ async function getVestingContractAddress(address: string) {
 }
 
 async function getTokenBalance(ownerAddress: string) {
-  const hexBalance = await moxieSmartContract.read.balanceOf([ownerAddress as `0x${string}`]);
+  const hexBalance = await moxieSmartContract.read.balanceOf([
+    ownerAddress as `0x${string}`,
+  ]);
   const decimalBalance = BigInt(hexBalance).toString();
   const tokenBalanceInMoxie = formatUnits(BigInt(decimalBalance), 18);
   return tokenBalanceInMoxie;
@@ -116,9 +135,67 @@ async function getMoxieBalanceInUSD() {
   return data.moxie.usd;
 }
 
+//Channel/User frame
+
+app.frame("/search-user-channel", async (c) => {
+  const verifiedAddresses = c.var.interactor;
+  return c.res({
+    image: "/img-seach-user-channel",
+    intents: [
+      <Button action="/check-moxie-amount">Check amount to reward</Button>,
+    ],
+  });
+});
+
+app.image("/img-seach-user-channel", async (c) => {
+  return c.res({
+    image: (
+      <Box
+        gap="16"
+        grow
+        flexDirection="column"
+        background="white"
+        height="100%"
+        padding="48"
+      >
+        <Box>
+          <img src="/moxielogo.png" width="200" height="50" />
+        </Box>
+        <Box
+          grow
+          alignContent="center"
+          justifyContent="center"
+          alignHorizontal="center"
+          alignVertical="center"
+          gap="16"
+        >
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+            <img src="/" width="200" height="50" />
+          </Box>
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            channel/username
+          </Text>
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+            <Text size="48" color="fontcolor" font="title_moxie" align="center">
+              564 fans
+            </Text>
+          </Box>
+        </Box>
+      </Box>
+    ),
+  });
+});
+
+//Amount of moxie to reward frame
 app.frame("/check-moxie-amount", async (c) => {
   const verifiedAddresses = c.var.interactor;
-  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ?? []) {
+  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ??
+    []) {
     // console.log(address);
     // const contractAddress = await getVestingContractAddress(address);
     // console.log(contractAddress);
@@ -132,7 +209,7 @@ app.frame("/check-moxie-amount", async (c) => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    console.log('totalValueFormatted:', totalValueFormatted);
+    console.log("totalValueFormatted:", totalValueFormatted);
   }
 
   return c.res({
@@ -157,7 +234,7 @@ app.image("/img-moxie-amount", async (c) => {
         padding="48"
       >
         <Box>
-          <img src="/moxielogo.png" width="185" height="50" />
+          <img src="/moxielogo.png" width="200" height="50" />
         </Box>
         <Box
           grow
@@ -167,7 +244,15 @@ app.image("/img-moxie-amount", async (c) => {
           alignVertical="center"
           gap="16"
         >
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            You have
+          </Text>
+          <Box backgroundColor="modal" paddingLeft="18" paddingRight="18">
             <Text size="64" color="fontcolor" font="title_moxie" align="center">
               $13,78
             </Text>
@@ -177,22 +262,21 @@ app.image("/img-moxie-amount", async (c) => {
               2,345,75 MOXIES
             </Text>
           </Box>
-          <Box
-            backgroundColor="modal"
-            padding-left="18"
-            paddingRight="18"
-            textAlign="center"
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
           >
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              To reward your fans token owners
-            </Text>
-          </Box>
+            to reward
+          </Text>
         </Box>
       </Box>
     ),
   });
 });
 
+//Frame to share moxie
 app.frame("/share-amount", async (c) => {
   const verifiedAddresses = c.var.interactor;
 
@@ -207,7 +291,7 @@ app.frame("/share-amount", async (c) => {
         padding="48"
       >
         <Box>
-          <img src="/moxielogo.png" width="180" height="50" />
+          <img src="/moxielogo.png" width="200" height="50" />
         </Box>
         <Box
           grow
@@ -217,14 +301,30 @@ app.frame("/share-amount", async (c) => {
           alignVertical="center"
           gap="16"
         >
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            I just burned
+          </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               2,345,75 MOXIES
             </Text>
           </Box>
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            for reward 564
+          </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              burned for my fans
+              0x94t3z fans
             </Text>
           </Box>
         </Box>

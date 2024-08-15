@@ -49,6 +49,13 @@ export const {
         weight: 400,
       },
     ],
+    subtitle_moxie: [
+      {
+        name: "Cabin",
+        source: "google",
+        weight: 400,
+      },
+    ],
     title_display: [
       {
         name: "Bricolage Grotesque",
