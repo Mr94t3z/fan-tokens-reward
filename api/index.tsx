@@ -84,12 +84,11 @@ app.frame("/", async (c) => {
     ],
   });
 });
+const graphQLClient = new GraphQLClient(
+  "https://api.studio.thegraph.com/query/23537/moxie_vesting_mainnet/version/latest"
+);
 
 async function getVestingContractAddress(address: string) {
-  const graphQLClient = new GraphQLClient(
-    "https://api.studio.thegraph.com/query/23537/moxie_vesting_mainnet/version/latest"
-  );
-
   const query = gql`
     query MyQuery($beneficiary: Bytes) {
       tokenLockWallets(where: { beneficiary: $beneficiary }) {
@@ -136,8 +135,27 @@ async function getMoxieBalanceInUSD() {
   return data.moxie.usd;
 }
 
-//Channel/User frame
+// async function getPriceOfCertainToken() {
+//   const query = gql`
+//     query MyQuery($fanTokenAddress: ID) {
+//       subjectTokens(where: { id: $fanTokenAddress }) {
+//         currentPriceInMoxie
+//       }
+//     }
+//   `;
 
+//   const variable = {
+//     fanTokenAddress: "0x550725f4D6fA5d2b4f33D4dBD68F9b1034665a84",
+//   };
+
+//   try {
+//     const data = await graphQLClient.request(query, variable);
+//     console.log(data);
+//   } catch (e) {
+//     throw new Error(e);
+//   }
+// }
+//Channel/User frame
 app.frame("/search-user-channel", async (c) => {
   const verifiedAddresses = c.var.interactor;
   return c.res({
@@ -186,6 +204,22 @@ app.image("/img-seach-user-channel", async (c) => {
               564 fans
             </Text>
           </Box>
+          <Text
+            size="24"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            Moxie Balance:
+          </Text>
+          <Text
+            size="24"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            0x85…rt748 (2,345,75 MOXIES)
+          </Text>
         </Box>
       </Box>
     ),
