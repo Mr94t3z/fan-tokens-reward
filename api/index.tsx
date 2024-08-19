@@ -5,9 +5,6 @@ import { neynar } from "frog/middlewares";
 import { handle } from "frog/vercel";
 import { Box, Column, Image, Text, vars } from "../lib/ui.js";
 import { moxieSmartContract } from "../lib/contracts.js";
-import { JSX } from "frog/jsx/jsx-runtime";
-import { JSXNode, Child } from "hono/jsx";
-import { HtmlEscapedString } from "hono/utils/html";
 import { gql, GraphQLClient } from "graphql-request";
 import { formatUnits } from "viem";
 
@@ -17,6 +14,14 @@ export const app = new Frog({
   ui: { vars },
   browserLocation: "",
   imageAspectRatio: "1:1",
+  // hub: {
+  //   apiUrl: "https://hubs.airstack.xyz",
+  //   fetchOptions: {
+  //     headers: {
+  //       "x-airstack-hubs": process.env.AIRSTACK_API_KEY || '',
+  //     }
+  //   }
+  // },
   headers: {
     "cache-control":
       "no-store, no-cache, must-revalidate, proxy-revalidate max-age=0, s-maxage=0",
@@ -32,6 +37,37 @@ export const app = new Frog({
     features: ["interactor", "cast"],
   })
 );
+
+// Initialize the GraphQL client
+const graphQLClient = new GraphQLClient(
+  "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest"
+);
+
+async function getTokenBalance(ownerAddress: string) {
+  const hexBalance = await moxieSmartContract.read.balanceOf([
+    ownerAddress as `0x${string}`,
+  ]);
+  const decimalBalance = BigInt(hexBalance).toString();
+  const tokenBalanceInMoxie = formatUnits(BigInt(decimalBalance), 18);
+  return tokenBalanceInMoxie;
+}
+
+async function getMoxieBalanceInUSD() {
+  const options = {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "x-cg-demo-api-key": "CG-xYGQqBU93QcE7LW14fhd953Z	",
+    },
+  };
+
+  const response = await fetch(
+    "https://api.coingecko.com/api/v3/simple/price?ids=moxie&vs_currencies=usd",
+    options
+  );
+  const data = await response.json();
+  return data.moxie.usd;
+}
 
 app.frame("/", async (c) => {
   return c.res({
@@ -83,87 +119,81 @@ app.frame("/", async (c) => {
     ],
   });
 });
-const graphQLClient = new GraphQLClient(
-  "https://api.studio.thegraph.com/query/23537/moxie_vesting_mainnet/version/latest"
-);
 
-async function getVestingContractAddress(address: string) {
-  const query = gql`
-    query MyQuery($beneficiary: Bytes) {
-      tokenLockWallets(where: { beneficiary: $beneficiary }) {
-        address: id
+
+app.frame("/search-user-channel", async (c) => {
+  const { inputText } = c;  // Capture the user input from the TextInput
+
+  // Determine whether the inputText is a valid fid or cid
+  const isChannel = (inputText ?? "").startsWith("cid:");
+  const isFan = (inputText ?? "").startsWith("fid:");
+
+  if (!isChannel && !isFan) {
+    // Return an error response if the format is incorrect
+    return c.error({
+      message: "Invalid input format. Please use `fid:<FID>` or `cid:<Channel Name>`.",
+    });
+  }
+
+  // Ensure the fanTokenSymbol is correctly prefixed
+  const fanTokenSymbol = isChannel ? inputText : isFan ? inputText : `fid:${inputText}`;
+
+  // Define the GraphQL query for the search
+  const searchQuery = gql`
+    query GetToken($fanTokenSymbol: String) {
+      subjectTokens(where: {symbol: $fanTokenSymbol}) {
+        id
+        name
+        symbol
+        currentPriceInMoxie
+        subject {
+          id
+        }
       }
     }
   `;
-  const variable = {
-    beneficiary: `${address}`,
-  };
-
+  
+  // Execute the query with the correct symbol (fid or cid)
   try {
-    const data: { tokenLockWallets: { address: string }[] } =
-      await graphQLClient.request(query, variable);
-    return data.tokenLockWallets[0].address;
-  } catch (e) {
-    throw new Error(String(e));
+    const variables = { fanTokenSymbol };
+    const data: any = await graphQLClient.request(searchQuery, variables);
+    const tokenDetails = data.subjectTokens[0];
+
+    console.log(`Search Results for ${inputText}`);
+
+    if (!tokenDetails) {
+      // If no tokenDetails are found, return an error message
+      return c.error({
+        message: `No results found for ${inputText}.`,
+      });
+    }
+
+    // Destructure the tokenDetails to extract individual variables
+    const { id, name, symbol, currentPriceInMoxie, subject } = tokenDetails;
+
+    // Log each variable
+    console.log(`ID: ${id}`);
+    console.log(`Name: ${name}`);
+    console.log(`Symbol: ${symbol}`);
+    console.log(`Current Price in Moxie: ${currentPriceInMoxie}`);
+    console.log(`Subject ID: ${subject?.id}`);
+
+    return c.res({
+      image: "/img-seach-user-channel",
+      intents: [
+        <Button action="/check-moxie-amount">Check amount to reward</Button>,
+      ],
+    });
+  } catch (error) {
+    console.error("Error fetching data:", error);
+
+    return c.error({
+      message: "No results found for the user or channel.",
+    });
   }
-}
-
-async function getTokenBalance(ownerAddress: string) {
-  const hexBalance = await moxieSmartContract.read.balanceOf([
-    ownerAddress as `0x${string}`,
-  ]);
-  const decimalBalance = BigInt(hexBalance).toString();
-  const tokenBalanceInMoxie = formatUnits(BigInt(decimalBalance), 18);
-  return tokenBalanceInMoxie;
-}
-
-async function getMoxieBalanceInUSD() {
-  const options = {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      "x-cg-demo-api-key": "CG-xYGQqBU93QcE7LW14fhd953Z	",
-    },
-  };
-
-  const response = await fetch(
-    "https://api.coingecko.com/api/v3/simple/price?ids=moxie&vs_currencies=usd",
-    options
-  );
-  const data = await response.json();
-  return data.moxie.usd;
-}
-
-// async function getPriceOfCertainToken() {
-//   const query = gql`
-//     query MyQuery($fanTokenAddress: ID) {
-//       subjectTokens(where: { id: $fanTokenAddress }) {
-//         currentPriceInMoxie
-//       }
-//     }
-//   `;
-
-//   const variable = {
-//     fanTokenAddress: "0x550725f4D6fA5d2b4f33D4dBD68F9b1034665a84",
-//   };
-
-//   try {
-//     const data = await graphQLClient.request(query, variable);
-//     console.log(data);
-//   } catch (e) {
-//     throw new Error(e);
-//   }
-// }
-//Channel/User frame
-app.frame("/search-user-channel", async (c) => {
-  const verifiedAddresses = c.var.interactor;
-  return c.res({
-    image: "/img-seach-user-channel",
-    intents: [
-      <Button action="/check-moxie-amount">Check amount to reward</Button>,
-    ],
-  });
 });
+
+
 
 app.image("/img-seach-user-channel", async (c) => {
   return c.res({
