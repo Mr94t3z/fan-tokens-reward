@@ -177,15 +177,10 @@ app.frame("/search-user-channel", async (c) => {
       });
     }
 
-    // Destructure the tokenDetails to extract individual variables
-    const { id, subject } = tokenDetails;
-
-    const subjectId = subject?.id;
-
     return c.res({
       image: `/img-seach-user-channel/${fanTokenSymbol}`,
       intents: [
-        <Button action={`/check-moxie-amount/${subjectId}`}>Check amount to reward</Button>,
+        <Button action={`/check-moxie-amount/${fanTokenSymbol}`}>Check amount to reward</Button>,
       ],
     });
   } catch (error) {
@@ -242,6 +237,8 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
   console.log(`Symbol: ${symbol}`);
   console.log(`Current Price in Moxie: ${currentPriceInMoxie}`);
   console.log(`Subject ID: ${subject?.id}`);
+
+  const totalFans = 564;
 
   // Initialize imageFanToken
   let imageFanToken: string | null = null;
@@ -345,7 +342,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              564 fans
+              {totalFans} fans
             </Text>
           </Box>
           {/* <Text
@@ -379,9 +376,35 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
 
 
 
-app.frame("/check-moxie-amount/:subjectId", async (c) => {
-  const { subjectId } = c.req.param();
+app.frame("/check-moxie-amount/:fanTokenSymbol", async (c) => {
+  const { fanTokenSymbol } = c.req.param();
   const verifiedAddresses = c.var.interactor;
+
+  // Define the GraphQL query for the search
+  const searchQuery = gql`
+    query GetToken($fanTokenSymbol: String) {
+      subjectTokens(where: {symbol: $fanTokenSymbol}) {
+        id
+        name
+        symbol
+        currentPriceInMoxie
+        subject {
+          id
+        }
+      }
+    }
+  `;
+
+  const variables = { fanTokenSymbol };
+  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
+  const tokenDetails = dataFanToken.subjectTokens[0];
+
+  console.log(`Search Results for ${fanTokenSymbol}`);
+
+  // Destructure the tokenDetails to extract individual variables
+  const { subject } = tokenDetails;
+
+  const subjectId = subject?.id;
 
   // Initialize variables
   let maxBalance = 0;
@@ -439,11 +462,12 @@ app.frame("/check-moxie-amount/:subjectId", async (c) => {
 
   // Determine intents based on allowance
   const intents = isAllowanceFinite ? [
-    <Button.Transaction target="/approve" action={`/check-moxie-amount/${subjectId}`}>Approve</Button.Transaction>,
+    <Button.Transaction target="/approve" action={`/check-moxie-amount/${fanTokenSymbol}`}>Approve</Button.Transaction>,
   ] : [
     <TextInput placeholder="Amount of MOXIE to reward" />,
-    <Button.Transaction target="/buy" action={`/check-moxie-amount/${subjectId}`}>Reward 100%</Button.Transaction>,
-    <Button action="/share-amount">Reward selected</Button>,
+    <Button.Transaction target={`/buy-n-burn-all/${subjectId}`} action={`/share-amount/${fanTokenSymbol}`}>Reward 100%</Button.Transaction>,
+    // <Button action={`/share-amount/${fanTokenSymbol}`}>Reward selected</Button>,
+    <Button.Transaction target={`/buy-n-burn-selected/${subjectId}`} action={`/share-amount/${fanTokenSymbol}`}>Reward selected</Button.Transaction>,
   ];
 
   return c.res({
@@ -532,38 +556,98 @@ async (c) => {
 })
 
 
-// app.transaction('/approve', async (c, next) => {
-//   await next();
-//   const txParams = await c.res.json();
-//   txParams.attribution = false;
-//   console.log(txParams);
-//   c.res = new Response(JSON.stringify(txParams), {
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//   });
-// },
-// async (c) => {
-//   const { inputText, address } = c;
-//   const inputValue = inputText ? parseFloat(inputText) : 0;
+app.transaction('/buy-n-burn-all/:subjectId', async (c, next) => {
+  await next();
+  const txParams = await c.res.json();
+  txParams.attribution = false;
+  console.log(txParams);
+  c.res = new Response(JSON.stringify(txParams), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+},
+async (c) => {
+  const { address } = c;
+  const { subjectId } = c.req.param();
 
-//   const tokenDecimalPrecision = 18;
-//   const amountInWei = inputValue * Math.pow(10, tokenDecimalPrecision);
+  const hexAmountBalance = await moxieSmartContract.read.balanceOf([
+    address as `0x${string}`,
+  ]);
+
+  return c.contract({
+    abi: moxieBondingCurveSmartContract.abi,
+    chainId: 'eip155:8453',
+    functionName: 'buySharesFor',
+    args: [subjectId as `0x${string}`, BigInt(hexAmountBalance), '0x0000000000000000000000000000000000000000', 0n],
+    to: moxieBondingCurveSmartContract.address,
+  })
+})
 
 
+app.transaction('/buy-n-burn-selected/:subjectId', async (c, next) => {
+  await next();
+  const txParams = await c.res.json();
+  txParams.attribution = false;
+  console.log(txParams);
+  c.res = new Response(JSON.stringify(txParams), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+},
+async (c) => {
+  const { inputText } = c;
+  const { subjectId } = c.req.param();
 
-//   return c.contract({
-//     chainId: 'eip155:42161',
-//     to: quote.to,
-//     data: quote.data,
-//     value: quote.value,
-//   })
-// })
+  const inputValue = inputText ? parseFloat(inputText) : 0;
+
+  const tokenDecimalPrecision = 18;
+  const amountMoxieInWei = inputValue * Math.pow(10, tokenDecimalPrecision);
+
+  return c.contract({
+    abi: moxieBondingCurveSmartContract.abi,
+    chainId: 'eip155:8453',
+    functionName: 'buySharesFor',
+    args: [subjectId as `0x${string}`, BigInt(amountMoxieInWei), '0x0000000000000000000000000000000000000000', 0n],
+    to: moxieBondingCurveSmartContract.address,
+  })
+})
 
 
 //Frame to share moxie
-app.frame("/share-amount", async (c) => {
-  const verifiedAddresses = c.var.interactor;
+app.frame("/share-amount/:fanTokenSymbol", async (c) => {
+  const { transactionId } = c;
+  const { fanTokenSymbol } = c.req.param();
+
+  // Define the GraphQL query for the search
+  const searchQuery = gql`
+    query GetToken($fanTokenSymbol: String) {
+      subjectTokens(where: {symbol: $fanTokenSymbol}) {
+        id
+        name
+        symbol
+        currentPriceInMoxie
+        subject {
+          id
+        }
+      }
+    }
+  `;
+
+  const variables = { fanTokenSymbol };
+  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
+  const tokenDetails = dataFanToken.subjectTokens[0];
+
+  console.log(`Search Results for ${fanTokenSymbol}`);
+
+  // Destructure the tokenDetails to extract individual variables
+  const { name } = tokenDetails;
+
+
+  console.log(`Name: ${name}`);
+
+  const totalFans = 564;
 
   return c.res({
     image: (
@@ -605,11 +689,11 @@ app.frame("/share-amount", async (c) => {
             font="subtitle_moxie"
             align="center"
           >
-            for reward 564
+            for reward {totalFans}
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              0x94t3z fans
+              {name} fans
             </Text>
           </Box>
         </Box>
