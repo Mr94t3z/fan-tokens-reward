@@ -6,7 +6,13 @@ import { handle } from "frog/vercel";
 import { Box, Column, Image, Text, vars } from "../lib/ui.js";
 import { moxieSmartContract } from "../lib/contracts.js";
 import { gql, GraphQLClient } from "graphql-request";
+import { init, fetchQuery } from "@airstack/node";
 import { formatUnits } from "viem";
+import dotenv from 'dotenv';
+
+
+// Load environment variables from .env file
+dotenv.config();
 
 export const app = new Frog({
   assetsPath: "/",
@@ -14,14 +20,14 @@ export const app = new Frog({
   ui: { vars },
   browserLocation: "",
   imageAspectRatio: "1:1",
-  // hub: {
-  //   apiUrl: "https://hubs.airstack.xyz",
-  //   fetchOptions: {
-  //     headers: {
-  //       "x-airstack-hubs": process.env.AIRSTACK_API_KEY || '',
-  //     }
-  //   }
-  // },
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": process.env.AIRSTACK_API_KEY || '',
+      }
+    }
+  },
   headers: {
     "cache-control":
       "no-store, no-cache, must-revalidate, proxy-revalidate max-age=0, s-maxage=0",
@@ -42,6 +48,9 @@ export const app = new Frog({
 const graphQLClient = new GraphQLClient(
   "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest"
 );
+
+// Initialize Airstack with API key
+init(process.env.AIRSTACK_API_KEY || '');
 
 async function getTokenBalance(ownerAddress: string) {
   const hexBalance = await moxieSmartContract.read.balanceOf([
@@ -156,8 +165,8 @@ app.frame("/search-user-channel", async (c) => {
   // Execute the query with the correct symbol (fid or cid)
   try {
     const variables = { fanTokenSymbol };
-    const data: any = await graphQLClient.request(searchQuery, variables);
-    const tokenDetails = data.subjectTokens[0];
+    const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
+    const tokenDetails = dataFanToken.subjectTokens[0];
 
     console.log(`Search Results for ${inputText}`);
 
@@ -168,18 +177,8 @@ app.frame("/search-user-channel", async (c) => {
       });
     }
 
-    // Destructure the tokenDetails to extract individual variables
-    const { id, name, symbol, currentPriceInMoxie, subject } = tokenDetails;
-
-    // Log each variable
-    console.log(`ID: ${id}`);
-    console.log(`Name: ${name}`);
-    console.log(`Symbol: ${symbol}`);
-    console.log(`Current Price in Moxie: ${currentPriceInMoxie}`);
-    console.log(`Subject ID: ${subject?.id}`);
-
     return c.res({
-      image: "/img-seach-user-channel",
+      image: `/img-seach-user-channel/${fanTokenSymbol}`,
       intents: [
         <Button action="/check-moxie-amount">Check amount to reward</Button>,
       ],
@@ -194,8 +193,110 @@ app.frame("/search-user-channel", async (c) => {
 });
 
 
+app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
+  const { fanTokenSymbol } = c.req.param();
 
-app.image("/img-seach-user-channel", async (c) => {
+  // Determine whether the input is a channel or a fan token
+  const isChannel = fanTokenSymbol.startsWith("cid:");
+  const isFan = fanTokenSymbol.startsWith("fid:");
+
+  // Ensure the fanTokenSymbol is correctly prefixed
+  const formattedSymbol = isChannel
+    ? fanTokenSymbol.slice(4) // Remove 'cid:' prefix
+    : isFan
+    ? fanTokenSymbol.slice(4) // Remove 'fid:' prefix
+    : fanTokenSymbol;
+
+  // Define the GraphQL query for the search
+  const searchQuery = gql`
+    query GetToken($fanTokenSymbol: String) {
+      subjectTokens(where: {symbol: $fanTokenSymbol}) {
+        id
+        name
+        symbol
+        currentPriceInMoxie
+        subject {
+          id
+        }
+      }
+    }
+  `;
+
+  const variables = { fanTokenSymbol };
+  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
+  const tokenDetails = dataFanToken.subjectTokens[0];
+
+  console.log(`Search Results for ${fanTokenSymbol}`);
+
+  // Destructure the tokenDetails to extract individual variables
+  const { id, name, symbol, currentPriceInMoxie, subject } = tokenDetails;
+
+  // Log each variable
+  console.log(`ID: ${id}`);
+  console.log(`Name: ${name}`);
+  console.log(`Symbol: ${symbol}`);
+  console.log(`Current Price in Moxie: ${currentPriceInMoxie}`);
+  console.log(`Subject ID: ${subject?.id}`);
+
+  // Initialize imageFanToken
+  let imageFanToken: string | null = null;
+
+  if (isChannel) {
+    // Define the GraphQL query to search for the channel image by CID
+    const searchChannelImageByCid = `
+      query SearchChannelImageByCid {
+        FarcasterChannels(
+          input: {blockchain: ALL, filter: {channelId: {_eq: "${formattedSymbol}"}}}
+        ) {
+          FarcasterChannel {
+            imageUrl
+          }
+        }
+      }
+    `;
+
+    // Fetch the channel image URL
+    const response = await fetchQuery(searchChannelImageByCid);
+    
+    const data = response?.data;
+
+    // Check if FarcasterChannels exists and has at least one result
+    imageFanToken = data?.FarcasterChannels?.FarcasterChannel?.[0]?.imageUrl;
+
+    if (imageFanToken) {
+      console.log(`Channel Image URL: ${imageFanToken}`);
+    } else {
+      console.log(`No image found for channel ${name}`);
+    }
+  } else if (isFan) {
+    // Define the GraphQL query to search for the user image by FID
+    const searchUserImageByFid = `
+      query SearchUserImageByFid {
+        Socials(
+          input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${formattedSymbol}"}}, blockchain: ethereum}
+        ) {
+          Social {
+            profileImage
+          }
+        }
+      }
+    `;
+
+    // Fetch the user image URL
+    const response = await fetchQuery(searchUserImageByFid);
+    
+    const data = response?.data;
+
+    // Check if Socials exists and has at least one result
+    imageFanToken = data?.Socials?.Social?.[0]?.profileImage;
+
+    if (imageFanToken) {
+      console.log(`User Image URL: ${imageFanToken}`);
+    } else {
+      console.log(`No image found for user ${name}`);
+    }
+  }
+
   return c.res({
     image: (
       <Box
@@ -218,7 +319,16 @@ app.image("/img-seach-user-channel", async (c) => {
           gap="16"
         >
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <img src="/" width="200" height="50" />
+
+            <img
+                  height="200"
+                  width="200"
+                  src={imageFanToken ?? ""}
+                  style={{
+                    borderRadius: "50%",
+                  }}
+                />
+
           </Box>
           <Text
             size="32"
@@ -226,14 +336,14 @@ app.image("/img-seach-user-channel", async (c) => {
             font="subtitle_moxie"
             align="center"
           >
-            channel/username
+            {name}
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               564 fans
             </Text>
           </Box>
-          <Text
+          {/* <Text
             size="20"
             color="fontcolor"
             font="subtitle_moxie"
@@ -255,36 +365,48 @@ app.image("/img-seach-user-channel", async (c) => {
                 M 2,345,75{" "}
               </Text>
             </Box>
-          </Box>
+          </Box> */}
         </Box>
       </Box>
     ),
   });
 });
 
-//Amount of moxie to reward frame
+
+
 app.frame("/check-moxie-amount", async (c) => {
   const verifiedAddresses = c.var.interactor;
-  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ??
-    []) {
-    // console.log(address);
-    // const contractAddress = await getVestingContractAddress(address);
-    // console.log(contractAddress);
-    const balance = await getTokenBalance(address);
+  let totalBalance = 0;
+  let totalMoxieInUSD = '';
+
+  for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ?? []) {
+    // Get the balance for each address
+    const balance = parseFloat(await getTokenBalance(address)); // Ensure balance is a number
     const balanceInUSD = await getMoxieBalanceInUSD();
-    console.log(balance, balanceInUSD);
-    const totalValue = parseInt(balance) * balanceInUSD;
-    const totalValueFormatted = totalValue.toLocaleString("en-US", {
+    console.log(`Total Moxie Balance for ${address}: ${balance}`);
+
+    // Accumulate the Moxie balance
+    Number(totalBalance += balance);
+
+    // Only format the total value in USD after accumulation
+    totalMoxieInUSD = (totalBalance * balanceInUSD).toLocaleString("en-US", {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    console.log("totalValueFormatted:", totalValueFormatted);
+
+    console.log("Total Moxie in USD:", totalMoxieInUSD);
   }
 
+  // Format the number with commas and two decimal places
+  const totalMoxieBalance = totalBalance.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
   return c.res({
-    image: "/img-moxie-amount",
+    image: `/img-moxie-amount/${totalMoxieBalance}/${totalMoxieInUSD}`,
     intents: [
       <TextInput placeholder="Amount of MOXIE to reward" />,
       <Button action="/share-amount">Reward 100% </Button>,
@@ -293,7 +415,10 @@ app.frame("/check-moxie-amount", async (c) => {
   });
 });
 
-app.image("/img-moxie-amount", async (c) => {
+
+app.image("/img-moxie-amount/:totalMoxieBalance/:totalMoxieInUSD", async (c) => {
+  const { totalMoxieBalance, totalMoxieInUSD } = c.req.param();
+
   return c.res({
     image: (
       <Box
@@ -325,12 +450,12 @@ app.image("/img-moxie-amount", async (c) => {
           </Text>
           <Box backgroundColor="modal" paddingLeft="18" paddingRight="18">
             <Text size="64" color="fontcolor" font="title_moxie" align="center">
-              $13,78
+              {totalMoxieInUSD}
             </Text>
           </Box>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              2,345,75 MOXIES
+              {totalMoxieBalance} MOXIES
             </Text>
           </Box>
           <Text
