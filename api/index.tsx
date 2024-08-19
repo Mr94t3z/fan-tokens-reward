@@ -70,7 +70,7 @@ async function getMoxieBalanceInUSD() {
     method: "GET",
     headers: {
       accept: "application/json",
-      "x-cg-demo-api-key": "CG-xYGQqBU93QcE7LW14fhd953Z	",
+      "x-cg-demo-api-key": process.env.CG_API_KEY || "CG-xYGQqBU93QcE7LW14fhd953Z",
     },
   };
 
