@@ -211,9 +211,21 @@ app.image("/img-seach-user-channel", async (c) => {
           >
             Your Balance:
           </Text>
-          <Text color="fontcolor" font="subtitle_moxie" align="center">
-            Airdrop wallet: (0x85…rt748) | 2,345,75 MOXIES
-          </Text>
+          <Box display="flex" flexDirection="row" gap="16">
+            <Text color="fontcolor" font="subtitle_moxie" align="center">
+              Wallet: (0x85…rt748)
+            </Text>
+            <Box
+              backgroundColor="modal"
+              paddingLeft="18"
+              paddingRight="18"
+              borderRadius="80"
+            >
+              <Text color="fontcolor" font="subtitle_moxie" align="center">
+                M 2,345,75{" "}
+              </Text>
+            </Box>
+          </Box>
         </Box>
       </Box>
     ),
