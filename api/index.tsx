@@ -44,13 +44,16 @@ export const app = new Frog({
   })
 );
 
+
 // Initialize the GraphQL client
 const graphQLClient = new GraphQLClient(
   "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest"
 );
 
+
 // Initialize Airstack with API key
 init(process.env.AIRSTACK_API_KEY || '');
+
 
 async function getTokenBalance(ownerAddress: string) {
   const hexBalance = await moxieSmartContract.read.balanceOf([
@@ -60,6 +63,7 @@ async function getTokenBalance(ownerAddress: string) {
   const tokenBalanceInMoxie = formatUnits(BigInt(decimalBalance), 18);
   return tokenBalanceInMoxie;
 }
+
 
 async function getMoxieBalanceInUSD() {
   const options = {
@@ -77,6 +81,34 @@ async function getMoxieBalanceInUSD() {
   const data = await response.json();
   return data.moxie.usd;
 }
+
+
+async function getTokenDetails(fanTokenSymbol: string) {
+  // Search Fan Token by fid or cid
+  const searchQuery = gql`
+    query GetToken($fanTokenSymbol: String) {
+      subjectTokens(where: { symbol: $fanTokenSymbol }) {
+        id
+        name
+        symbol
+        currentPriceInMoxie
+        subject {
+          id
+        }
+      }
+    }
+  `;
+
+  const variables = { fanTokenSymbol };
+  try {
+    const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
+    return dataFanToken.subjectTokens[0];
+  } catch (error) {
+    console.error("Error fetching token details:", error);
+    throw error;
+  }
+}
+
 
 app.frame("/", async (c) => {
   return c.res({
@@ -146,27 +178,10 @@ app.frame("/search-user-channel", async (c) => {
 
   // Ensure the fanTokenSymbol is correctly prefixed
   const fanTokenSymbol = isChannel ? inputText : isFan ? inputText : `fid:${inputText}`;
-
-  // Define the GraphQL query for the search
-  const searchQuery = gql`
-    query GetToken($fanTokenSymbol: String) {
-      subjectTokens(where: {symbol: $fanTokenSymbol}) {
-        id
-        name
-        symbol
-        currentPriceInMoxie
-        subject {
-          id
-        }
-      }
-    }
-  `;
   
   // Execute the query with the correct symbol (fid or cid)
   try {
-    const variables = { fanTokenSymbol };
-    const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
-    const tokenDetails = dataFanToken.subjectTokens[0];
+    const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
     console.log(`Search Results for ${inputText}`);
 
@@ -207,24 +222,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
     ? fanTokenSymbol.slice(4) // Remove 'fid:' prefix
     : fanTokenSymbol;
 
-  // Define the GraphQL query for the search
-  const searchQuery = gql`
-    query GetToken($fanTokenSymbol: String) {
-      subjectTokens(where: {symbol: $fanTokenSymbol}) {
-        id
-        name
-        symbol
-        currentPriceInMoxie
-        subject {
-          id
-        }
-      }
-    }
-  `;
-
-  const variables = { fanTokenSymbol };
-  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
-  const tokenDetails = dataFanToken.subjectTokens[0];
+  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
 
@@ -380,24 +378,7 @@ app.frame("/check-moxie-amount/:fanTokenSymbol", async (c) => {
   const { fanTokenSymbol } = c.req.param();
   const verifiedAddresses = c.var.interactor;
 
-  // Define the GraphQL query for the search
-  const searchQuery = gql`
-    query GetToken($fanTokenSymbol: String) {
-      subjectTokens(where: {symbol: $fanTokenSymbol}) {
-        id
-        name
-        symbol
-        currentPriceInMoxie
-        subject {
-          id
-        }
-      }
-    }
-  `;
-
-  const variables = { fanTokenSymbol };
-  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
-  const tokenDetails = dataFanToken.subjectTokens[0];
+  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
 
@@ -620,24 +601,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
   const { transactionId } = c;
   const { fanTokenSymbol } = c.req.param();
 
-  // Define the GraphQL query for the search
-  const searchQuery = gql`
-    query GetToken($fanTokenSymbol: String) {
-      subjectTokens(where: {symbol: $fanTokenSymbol}) {
-        id
-        name
-        symbol
-        currentPriceInMoxie
-        subject {
-          id
-        }
-      }
-    }
-  `;
-
-  const variables = { fanTokenSymbol };
-  const dataFanToken: any = await graphQLClient.request(searchQuery, variables);
-  const tokenDetails = dataFanToken.subjectTokens[0];
+  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
 
