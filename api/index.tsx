@@ -4,7 +4,7 @@ import { serveStatic } from "frog/serve-static";
 import { neynar } from "frog/middlewares";
 import { handle } from "frog/vercel";
 import { Box, Column, Image, Text, vars } from "../lib/ui.js";
-import { moxieSmartContract } from "../lib/contracts.js";
+import { moxieSmartContract, moxieBondingCurveSmartContract } from "../lib/contracts.js";
 import { gql, GraphQLClient } from "graphql-request";
 import { init, fetchQuery } from "@airstack/node";
 import { formatUnits } from "viem";
@@ -177,10 +177,15 @@ app.frame("/search-user-channel", async (c) => {
       });
     }
 
+    // Destructure the tokenDetails to extract individual variables
+    const { id, subject } = tokenDetails;
+
+    const subjectId = subject?.id;
+
     return c.res({
       image: `/img-seach-user-channel/${fanTokenSymbol}`,
       intents: [
-        <Button action="/check-moxie-amount">Check amount to reward</Button>,
+        <Button action={`/check-moxie-amount/${subjectId}`}>Check amount to reward</Button>,
       ],
     });
   } catch (error) {
@@ -374,30 +379,45 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
 
 
 
-app.frame("/check-moxie-amount", async (c) => {
+app.frame("/check-moxie-amount/:subjectId", async (c) => {
+  const { subjectId } = c.req.param();
   const verifiedAddresses = c.var.interactor;
+
+  // Initialize variables
+  let maxBalance = 0;
   let totalBalance = 0;
   let totalMoxieInUSD = '';
 
+  // Arrays to store balances and addresses with the maximum balance
+  const addressBalances = [];
+  const highestBalanceAddresses = [];
+
+  // Get balance for each address and find the maximum balance
   for (const address of verifiedAddresses?.verifiedAddresses.ethAddresses ?? []) {
-    // Get the balance for each address
     const balance = parseFloat(await getTokenBalance(address)); // Ensure balance is a number
-    const balanceInUSD = await getMoxieBalanceInUSD();
-    console.log(`Total Moxie Balance for ${address}: ${balance}`);
-
-    // Accumulate the Moxie balance
-    Number(totalBalance += balance);
-
-    // Only format the total value in USD after accumulation
-    totalMoxieInUSD = (totalBalance * balanceInUSD).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    console.log("Total Moxie in USD:", totalMoxieInUSD);
+    addressBalances.push({ address, balance });
+    maxBalance = Math.max(maxBalance, balance);
   }
+
+  // Identify addresses with the highest balance
+  for (const { address, balance } of addressBalances) {
+    if (balance === maxBalance) {
+      highestBalanceAddresses.push(address);
+      totalBalance += balance; // Accumulate balance for addresses with the maximum balance
+    }
+  }
+
+  // Log addresses with the highest balance
+  console.log(`Addresses with the highest balance (${maxBalance}):`, highestBalanceAddresses);
+
+  // Calculate the total value in USD
+  const balanceInUSD = await getMoxieBalanceInUSD();
+  totalMoxieInUSD = (totalBalance * balanceInUSD).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   // Format the number with commas and two decimal places
   const totalMoxieBalance = totalBalance.toLocaleString('en-US', {
@@ -405,13 +425,30 @@ app.frame("/check-moxie-amount", async (c) => {
     maximumFractionDigits: 2
   });
 
+  const address = highestBalanceAddresses[0];
+
+  const allowance = await moxieSmartContract.read.allowance([
+    address as `0x${string}`,
+    moxieBondingCurveSmartContract.address,
+  ]);
+
+  console.log(`Allowance for ${address}: ${allowance}`);
+
+  // Check if allowance is not unlimited
+  const isAllowanceFinite = BigInt(allowance) < BigInt('100000000000000000000000000000000'); // Example threshold
+
+  // Determine intents based on allowance
+  const intents = isAllowanceFinite ? [
+    <Button.Transaction target="/approve" action={`/check-moxie-amount/${subjectId}`}>Approve</Button.Transaction>,
+  ] : [
+    <TextInput placeholder="Amount of MOXIE to reward" />,
+    <Button.Transaction target="/buy" action={`/check-moxie-amount/${subjectId}`}>Reward 100%</Button.Transaction>,
+    <Button action="/share-amount">Reward selected</Button>,
+  ];
+
   return c.res({
     image: `/img-moxie-amount/${totalMoxieBalance}/${totalMoxieInUSD}`,
-    intents: [
-      <TextInput placeholder="Amount of MOXIE to reward" />,
-      <Button action="/share-amount">Reward 100% </Button>,
-      <Button action="/share-amount">Reward selected </Button>,
-    ],
+    intents,
   });
 });
 
@@ -471,6 +508,58 @@ app.image("/img-moxie-amount/:totalMoxieBalance/:totalMoxieInUSD", async (c) => 
     ),
   });
 });
+
+
+app.transaction('/approve', async (c, next) => {
+  await next();
+  const txParams = await c.res.json();
+  txParams.attribution = false;
+  console.log(txParams);
+  c.res = new Response(JSON.stringify(txParams), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+},
+async (c) => {
+  return c.contract({
+    abi: moxieSmartContract.abi,
+    chainId: 'eip155:8453',
+    functionName: 'approve',
+    args: [moxieBondingCurveSmartContract.address, BigInt(100000000000000000000000000000000000000000000000000n)],
+    to: moxieSmartContract.address,
+  })
+})
+
+
+// app.transaction('/approve', async (c, next) => {
+//   await next();
+//   const txParams = await c.res.json();
+//   txParams.attribution = false;
+//   console.log(txParams);
+//   c.res = new Response(JSON.stringify(txParams), {
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//   });
+// },
+// async (c) => {
+//   const { inputText, address } = c;
+//   const inputValue = inputText ? parseFloat(inputText) : 0;
+
+//   const tokenDecimalPrecision = 18;
+//   const amountInWei = inputValue * Math.pow(10, tokenDecimalPrecision);
+
+
+
+//   return c.contract({
+//     chainId: 'eip155:42161',
+//     to: quote.to,
+//     data: quote.data,
+//     value: quote.value,
+//   })
+// })
+
 
 //Frame to share moxie
 app.frame("/share-amount", async (c) => {
