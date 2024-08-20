@@ -18,6 +18,7 @@ import { formatUnits, decodeFunctionData } from "viem";
 import { publicClient } from "../lib/viem.js";
 import dotenv from 'dotenv';
 
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -106,7 +107,7 @@ async function getTokenDetails(fanTokenSymbol: string) {
         id
         name
         symbol
-        currentPriceInMoxie
+        uniqueHolders
         subject {
           id
         }
@@ -242,16 +243,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
   console.log(`Search Results for ${fanTokenSymbol}`);
 
   // Destructure the tokenDetails to extract individual variables
-  const { id, name, symbol, currentPriceInMoxie, subject } = tokenDetails;
-
-  // Log each variable
-  console.log(`ID: ${id}`);
-  console.log(`Name: ${name}`);
-  console.log(`Symbol: ${symbol}`);
-  console.log(`Current Price in Moxie: ${currentPriceInMoxie}`);
-  console.log(`Subject ID: ${subject?.id}`);
-
-  const totalFans = 564;
+  const { name, uniqueHolders } = tokenDetails;
 
   // Initialize imageFanToken
   let imageFanToken: string | null = null;
@@ -355,7 +347,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {totalFans} fans
+              {uniqueHolders} fans
             </Text>
           </Box>
           {/* <Text
@@ -386,7 +378,6 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
     ),
   });
 });
-
 
 
 app.frame("/check-moxie-amount/:fanTokenSymbol", async (c) => {
@@ -625,114 +616,128 @@ async (c) => {
 
 
 app.frame("/share-amount/:fanTokenSymbol", async (c) => {
-  const { transactionId } = c;
+  const { transactionId, buttonValue } = c;
   const { fanTokenSymbol } = c.req.param();
 
-  const transaction = await publicClient.getTransaction({ 
-    hash: transactionId as `0x${string}`
-  })
+  const txHash = transactionId || buttonValue;
+ 
+  if (!txHash) {
+    console.log("Transaction still pending!");
+  }
 
-  const inputData = transaction.input;
+  try {
 
-  const decoded = decodeFunctionData({
-    abi: moxieBondingCurveSmartContract.abi,
-    data: inputData,
-  });
+    const transaction = await publicClient.getTransaction({ 
+      hash: txHash as `0x${string}`
+    })
 
-  const _depositAmount = decoded.args[1];
+    const inputData = transaction.input;
 
-  const formatTotalBurned = formatUnits(_depositAmount, 18);
+    const decoded = decodeFunctionData({
+      abi: moxieBondingCurveSmartContract.abi,
+      data: inputData,
+    });
 
-  const totalBurned = parseFloat(formatTotalBurned);
+    const _depositAmount = decoded.args[1];
 
-  const totalMoxieBurned = totalBurned.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+    const formatTotalBurned = formatUnits(_depositAmount, 18);
 
-  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+    const totalBurned = parseFloat(formatTotalBurned);
 
-  console.log(`Search Results for ${fanTokenSymbol}`);
+    const totalMoxieBurned = totalBurned.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
 
-  const { name } = tokenDetails;
+    const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
-  const totalFans = 564;
+    console.log(`Search Results for ${fanTokenSymbol}`);
 
-  const shareText = `hihi @betashop.eth @airstack.eth look! I just burned ${totalMoxieBurned} @moxie.eth for reward ${totalFans} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
+    const { name, uniqueHolders } = tokenDetails;
 
-  const embedUrlByUser = `${embedUrl}/share-by-user/${fanTokenSymbol}/${totalMoxieBurned}`;
+    const shareText = `hihi @betashop.eth @airstack.eth look! I just burned ${totalMoxieBurned} @moxie.eth for reward ${uniqueHolders} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
 
-  const SHARE_BY_USER = `${baseUrl}?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(embedUrlByUser)}`;
+    const embedUrlByUser = `${embedUrl}/share-by-user/${fanTokenSymbol}/${totalMoxieBurned}`;
 
-  return c.res({
-    image: (
-      <Box
-        gap="16"
-        grow
-        flexDirection="column"
-        background="white"
-        height="100%"
-        padding="48"
-      >
-        <Box>
-          <img src="/moxielogo.png" width="200" height="50" />
-        </Box>
+    const SHARE_BY_USER = `${baseUrl}?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(embedUrlByUser)}`;
+
+    return c.res({
+      image: (
         <Box
-          grow
-          alignContent="center"
-          justifyContent="center"
-          alignHorizontal="center"
-          alignVertical="center"
           gap="16"
+          grow
+          flexDirection="column"
+          background="white"
+          height="100%"
+          padding="48"
         >
-          <Text
-            size="32"
-            color="fontcolor"
-            font="subtitle_moxie"
-            align="center"
-          >
-            I just burned
-          </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {totalMoxieBurned} MOXIES
-            </Text>
+          <Box>
+            <img src="/moxielogo.png" width="200" height="50" />
           </Box>
-          <Text
-            size="32"
-            color="fontcolor"
-            font="subtitle_moxie"
-            align="center"
+          <Box
+            grow
+            alignContent="center"
+            justifyContent="center"
+            alignHorizontal="center"
+            alignVertical="center"
+            gap="16"
           >
-            for reward {totalFans}
-          </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {name} fans
+            <Text
+              size="32"
+              color="fontcolor"
+              font="subtitle_moxie"
+              align="center"
+            >
+              I just burned
             </Text>
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+              <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                {totalMoxieBurned} MOXIES
+              </Text>
+            </Box>
+            <Text
+              size="32"
+              color="fontcolor"
+              font="subtitle_moxie"
+              align="center"
+            >
+              for reward {uniqueHolders}
+            </Text>
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+              <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                {name} fans
+              </Text>
+            </Box>
           </Box>
         </Box>
-      </Box>
-    ),
-    intents: [
-      <Button action={SHARE_BY_USER}>Share</Button>,
-      <Button action="/">Retry</Button>,
-    ],
-  });
+      ),
+      intents: [
+        <Button action={SHARE_BY_USER}>Share</Button>,
+        <Button action="/">Retry</Button>,
+      ],
+    });
+  } catch (e) {
+      return c.res({
+        imageAspectRatio: "1.91:1",
+        image: '/waiting.gif',
+        intents: [
+          <Button value={txHash} action={`share-amount/${fanTokenSymbol}`}>
+            Refresh
+          </Button>,
+        ],
+      });
+    }
 });
 
 
 app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
-  
   const { fanTokenSymbol, totalMoxieBurned } = c.req.param();
 
   const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
 
-  const { name } = tokenDetails;
-
-  const totalFans = 564;
+  const { name, uniqueHolders } = tokenDetails;
 
   return c.res({
     image: (
@@ -774,7 +779,7 @@ app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
             font="subtitle_moxie"
             align="center"
           >
-            for reward {totalFans}
+            for reward {uniqueHolders}
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
