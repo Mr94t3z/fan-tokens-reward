@@ -621,22 +621,22 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
   const txHash = transactionId || buttonValue;
 
-  if (!txHash) {
-    return c.res({
-      imageAspectRatio: "1.91:1",
-      image: '/waiting.gif',
-      intents: [
-        <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
-          Refresh
-        </Button>,
-      ],
-    });
-  }
-
   try {
     const transaction = await publicClient.getTransaction({ 
       hash: txHash as `0x${string}`
     });
+
+    if (!transaction) {
+      return c.res({
+        imageAspectRatio: "1.91:1",
+        image: '/waiting.gif',
+        intents: [
+          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
+            Refresh
+          </Button>,
+        ],
+      });
+    }
 
     const inputData = transaction.input;
 
@@ -716,7 +716,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
         </Box>
       ),
       intents: [
-        <Button action={SHARE_BY_USER}>Share</Button>,
+        <Button.Link href={SHARE_BY_USER}>Share</Button.Link>,
         <Button action="/">Try again 🔥</Button>,
       ],
     });
