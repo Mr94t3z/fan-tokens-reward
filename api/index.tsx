@@ -620,16 +620,23 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
   const { fanTokenSymbol } = c.req.param();
 
   const txHash = transactionId || buttonValue;
- 
+
   if (!txHash) {
-    console.log("Transaction still pending!");
+    return c.res({
+      imageAspectRatio: "1.91:1",
+      image: '/waiting.gif',
+      intents: [
+        <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
+          Refresh
+        </Button>,
+      ],
+    });
   }
 
   try {
-
     const transaction = await publicClient.getTransaction({ 
       hash: txHash as `0x${string}`
-    })
+    });
 
     const inputData = transaction.input;
 
@@ -639,11 +646,8 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
     });
 
     const _depositAmount = decoded.args[1];
-
     const formatTotalBurned = formatUnits(_depositAmount, 18);
-
     const totalBurned = parseFloat(formatTotalBurned);
-
     const totalMoxieBurned = totalBurned.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -717,16 +721,16 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
       ],
     });
   } catch (e) {
-      return c.res({
-        imageAspectRatio: "1.91:1",
-        image: '/waiting.gif',
-        intents: [
-          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
-            Refresh
-          </Button>,
-        ],
-      });
-    }
+    return c.res({
+      imageAspectRatio: "1.91:1",
+      image: '/waiting.gif',
+      intents: [
+        <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
+          Refresh
+        </Button>,
+      ],
+    });
+  }
 });
 
 
