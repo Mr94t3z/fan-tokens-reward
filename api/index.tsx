@@ -626,18 +626,6 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
       hash: txHash as `0x${string}`
     });
 
-    if (!transaction) {
-      return c.res({
-        imageAspectRatio: "1.91:1",
-        image: '/waiting.gif',
-        intents: [
-          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
-            Refresh
-          </Button>,
-        ],
-      });
-    }
-
     const inputData = transaction.input;
 
     const decoded = decodeFunctionData({
@@ -665,62 +653,75 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
     const SHARE_BY_USER = `${baseUrl}?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(embedUrlByUser)}`;
 
-    return c.res({
-      image: (
-        <Box
-          gap="16"
-          grow
-          flexDirection="column"
-          background="white"
-          height="100%"
-          padding="48"
-        >
-          <Box>
-            <img src="/moxielogo.png" width="200" height="50" />
-          </Box>
+    if (transaction) {
+      return c.res({
+        image: (
           <Box
-            grow
-            alignContent="center"
-            justifyContent="center"
-            alignHorizontal="center"
-            alignVertical="center"
             gap="16"
+            grow
+            flexDirection="column"
+            background="white"
+            height="100%"
+            padding="48"
           >
-            <Text
-              size="32"
-              color="fontcolor"
-              font="subtitle_moxie"
-              align="center"
-            >
-              I just burned
-            </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-              <Text size="48" color="fontcolor" font="title_moxie" align="center">
-                {totalMoxieBurned} MOXIES
-              </Text>
+            <Box>
+              <img src="/moxielogo.png" width="200" height="50" />
             </Box>
-            <Text
-              size="32"
-              color="fontcolor"
-              font="subtitle_moxie"
-              align="center"
+            <Box
+              grow
+              alignContent="center"
+              justifyContent="center"
+              alignHorizontal="center"
+              alignVertical="center"
+              gap="16"
             >
-              for reward {uniqueHolders}
-            </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-              <Text size="48" color="fontcolor" font="title_moxie" align="center">
-                {name} fans
+              <Text
+                size="32"
+                color="fontcolor"
+                font="subtitle_moxie"
+                align="center"
+              >
+                I just burned
               </Text>
+              <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+                <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                  {totalMoxieBurned} MOXIES
+                </Text>
+              </Box>
+              <Text
+                size="32"
+                color="fontcolor"
+                font="subtitle_moxie"
+                align="center"
+              >
+                for reward {uniqueHolders}
+              </Text>
+              <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+                <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                  {name} fans
+                </Text>
+              </Box>
             </Box>
           </Box>
-        </Box>
-      ),
-      intents: [
-        <Button.Link href={SHARE_BY_USER}>Share</Button.Link>,
-        <Button action="/">Try again 🔥</Button>,
-      ],
-    });
+        ),
+        intents: [
+          <Button.Link href={SHARE_BY_USER}>Share</Button.Link>,
+          <Button action="/">Try again 🔥</Button>,
+        ],
+      });
+    } else {
+      return c.res({
+        imageAspectRatio: "1.91:1",
+        image: '/waiting.gif',
+        intents: [
+          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
+            Refresh
+          </Button>,
+        ],
+      });
+    }
   } catch (e) {
+    console.error('Error:', e);
     return c.res({
       imageAspectRatio: "1.91:1",
       image: '/waiting.gif',
