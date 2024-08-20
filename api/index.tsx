@@ -21,11 +21,19 @@ import dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
+
+const baseUrl = "https://warpcast.com/~/compose";
+const text = "Reward your Moxie Fans\n\nFrame by @0x94t3z.eth & @thenumb.eth";
+const embedUrl = "https://fan-tokens-reward.vercel.app/api/frame";
+
+const CAST_INTENS = `${baseUrl}?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(embedUrl)}`;
+
+
 export const app = new Frog({
   assetsPath: "/",
   basePath: "/api/frame",
   ui: { vars },
-  browserLocation: "",
+  browserLocation: CAST_INTENS,
   imageAspectRatio: "1:1",
   hub: {
     apiUrl: "https://hubs.airstack.xyz",
@@ -616,7 +624,6 @@ async (c) => {
 })
 
 
-//Frame to share moxie
 app.frame("/share-amount/:fanTokenSymbol", async (c) => {
   const { transactionId } = c;
   const { fanTokenSymbol } = c.req.param();
@@ -642,6 +649,82 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+
+  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+
+  console.log(`Search Results for ${fanTokenSymbol}`);
+
+  const { name } = tokenDetails;
+
+  const totalFans = 564;
+
+  const shareText = `hihi @betashop.eth @airstack.eth look! I just burned ${totalMoxieBurned} @moxie.eth for reward ${totalFans} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
+
+  const embedUrlByUser = `${embedUrl}/share-by-user/${fanTokenSymbol}/${totalMoxieBurned}`;
+
+  const SHARE_BY_USER = `${baseUrl}?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(embedUrlByUser)}`;
+
+  return c.res({
+    image: (
+      <Box
+        gap="16"
+        grow
+        flexDirection="column"
+        background="white"
+        height="100%"
+        padding="48"
+      >
+        <Box>
+          <img src="/moxielogo.png" width="200" height="50" />
+        </Box>
+        <Box
+          grow
+          alignContent="center"
+          justifyContent="center"
+          alignHorizontal="center"
+          alignVertical="center"
+          gap="16"
+        >
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            I just burned
+          </Text>
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+            <Text size="48" color="fontcolor" font="title_moxie" align="center">
+              {totalMoxieBurned} MOXIES
+            </Text>
+          </Box>
+          <Text
+            size="32"
+            color="fontcolor"
+            font="subtitle_moxie"
+            align="center"
+          >
+            for reward {totalFans}
+          </Text>
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+            <Text size="48" color="fontcolor" font="title_moxie" align="center">
+              {name} fans
+            </Text>
+          </Box>
+        </Box>
+      </Box>
+    ),
+    intents: [
+      <Button action={SHARE_BY_USER}>Share</Button>,
+      <Button action="/">Retry</Button>,
+    ],
+  });
+});
+
+
+app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
+  
+  const { fanTokenSymbol, totalMoxieBurned } = c.req.param();
 
   const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
@@ -702,11 +785,11 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
       </Box>
     ),
     intents: [
-      <Button action="/">Share</Button>,
-      <Button action="/">Buy Moxie </Button>,
+      <Button action="/">Try yours!</Button>,
     ],
   });
 });
+
 
 // @ts-ignore
 const isEdgeFunction = typeof EdgeFunction !== "undefined";
