@@ -112,40 +112,6 @@ const MOXIE_BODNDING_CURVE_ABI = [
       ],
       "stateMutability": "nonpayable",
       "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "_subject",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_sellAmount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "_onBehalfOf",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_minReturnAmountAfterFee",
-          "type": "uint256"
-        }
-      ],
-      "name": "sellSharesFor",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "returnAmount_",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
     }
   ] as const;
 

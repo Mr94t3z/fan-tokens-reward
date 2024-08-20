@@ -7,8 +7,9 @@ import { Box, Column, Image, Text, vars } from "../lib/ui.js";
 import { moxieSmartContract, moxieBondingCurveSmartContract } from "../lib/contracts.js";
 import { gql, GraphQLClient } from "graphql-request";
 import { init, fetchQuery } from "@airstack/node";
-import { formatUnits } from "viem";
+import { formatUnits, decodeFunctionData } from "viem";
 import dotenv from 'dotenv';
+import { publicClient } from "../lib/viem.js";
 
 
 // Load environment variables from .env file
@@ -111,6 +112,42 @@ async function getTokenDetails(fanTokenSymbol: string) {
 
 
 app.frame("/", async (c) => {
+
+  const transaction = await publicClient.getTransaction({ 
+    hash: '0x375343a872dde608462ab4aa25728ebd29b5192ab1cd5afc998c29ca241be410'
+  })
+
+  const inputData = transaction.input;
+
+  const decoded = decodeFunctionData({
+    abi: moxieBondingCurveSmartContract.abi,
+    data: inputData,
+  });
+
+  console.log(decoded);
+
+  // Extracting _depositAmount
+  const _depositAmount = decoded.args[1];
+
+  console.log(_depositAmount); // Outputs: 311160265788953984052n
+
+  // Convert to human-readable format with 18 decimals
+  const humanReadableAmount = formatUnits(_depositAmount, 18);
+
+  console.log(humanReadableAmount); // Outputs: "311.160265788953984052"
+
+  const totalBalance = parseFloat(humanReadableAmount);
+
+  // Format the number with commas and two decimal places
+  const totalMoxieBalance = totalBalance.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+
+  console.log(`Total Moxie Balance: ${totalMoxieBalance}`);
+
+
   return c.res({
     image: (
       <Box
@@ -531,7 +568,10 @@ async (c) => {
     abi: moxieSmartContract.abi,
     chainId: 'eip155:8453',
     functionName: 'approve',
-    args: [moxieBondingCurveSmartContract.address, BigInt(100000000000000000000000000000000000000000000000000n)],
+    args: [
+      moxieBondingCurveSmartContract.address, // spender
+      BigInt(100000000000000000000000000000000000000000000000000n) // unlimited allowance
+    ],
     to: moxieSmartContract.address,
   })
 })
@@ -560,7 +600,12 @@ async (c) => {
     abi: moxieBondingCurveSmartContract.abi,
     chainId: 'eip155:8453',
     functionName: 'buySharesFor',
-    args: [subjectId as `0x${string}`, BigInt(hexAmountBalance), '0x0000000000000000000000000000000000000000', 0n],
+    args: [
+      subjectId as `0x${string}`, // subjectId
+      BigInt(hexAmountBalance), // amount of MOXIE to burn
+      '0x0000000000000000000000000000000000000000', // onBehalfOf burn address
+      0n // minReturnAmountAfterFee
+    ],
     to: moxieBondingCurveSmartContract.address,
   })
 })
@@ -590,7 +635,12 @@ async (c) => {
     abi: moxieBondingCurveSmartContract.abi,
     chainId: 'eip155:8453',
     functionName: 'buySharesFor',
-    args: [subjectId as `0x${string}`, BigInt(amountMoxieInWei), '0x0000000000000000000000000000000000000000', 0n],
+    args: [
+      subjectId as `0x${string}`, // subjectId
+      BigInt(amountMoxieInWei), // amount of MOXIE to burn
+      '0x0000000000000000000000000000000000000000', // onBehalfOf burn address
+      0n // minReturnAmountAfterFee
+    ],
     to: moxieBondingCurveSmartContract.address,
   })
 })
@@ -601,15 +651,33 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
   const { transactionId } = c;
   const { fanTokenSymbol } = c.req.param();
 
+  const transaction = await publicClient.getTransaction({ 
+    hash: transactionId as `0x${string}`
+  })
+
+  const inputData = transaction.input;
+
+  const decoded = decodeFunctionData({
+    abi: moxieBondingCurveSmartContract.abi,
+    data: inputData,
+  });
+
+  const _depositAmount = decoded.args[1];
+
+  const formatTotalBurned = formatUnits(_depositAmount, 18);
+
+  const totalBurned = parseFloat(formatTotalBurned);
+
+  const totalMoxieBurned = totalBurned.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
   const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
-
-  // Destructure the tokenDetails to extract individual variables
+  
   const { name } = tokenDetails;
-
-
-  console.log(`Name: ${name}`);
 
   const totalFans = 564;
 
@@ -644,7 +712,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              2,345,75 MOXIES
+              {totalMoxieBurned} MOXIES
             </Text>
           </Box>
           <Text
