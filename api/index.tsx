@@ -713,7 +713,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
       ),
       intents: [
         <Button action={SHARE_BY_USER}>Share</Button>,
-        <Button action="/">Retry</Button>,
+        <Button action="/">Try again 🔥</Button>,
       ],
     });
   } catch (e) {
@@ -721,7 +721,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
         imageAspectRatio: "1.91:1",
         image: '/waiting.gif',
         intents: [
-          <Button value={txHash} action={`share-amount/${fanTokenSymbol}`}>
+          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
             Refresh
           </Button>,
         ],
