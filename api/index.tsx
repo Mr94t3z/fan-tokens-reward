@@ -785,7 +785,7 @@ app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
       </Box>
     ),
     intents: [
-      <Button action="/">Try yours!</Button>,
+      <Button action="/">Give it a try!</Button>,
     ],
   });
 });
