@@ -3,13 +3,20 @@ import { devtools } from "frog/dev";
 import { serveStatic } from "frog/serve-static";
 import { neynar } from "frog/middlewares";
 import { handle } from "frog/vercel";
-import { Box, Column, Image, Text, vars } from "../lib/ui.js";
-import { moxieSmartContract, moxieBondingCurveSmartContract } from "../lib/contracts.js";
+import { 
+  Box,
+  Text, 
+  vars 
+} from "../lib/ui.js";
+import { 
+  moxieSmartContract, 
+  moxieBondingCurveSmartContract 
+} from "../lib/contracts.js";
 import { gql, GraphQLClient } from "graphql-request";
 import { init, fetchQuery } from "@airstack/node";
 import { formatUnits, decodeFunctionData } from "viem";
-import dotenv from 'dotenv';
 import { publicClient } from "../lib/viem.js";
+import dotenv from 'dotenv';
 
 
 // Load environment variables from .env file
@@ -676,7 +683,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
   const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
 
   console.log(`Search Results for ${fanTokenSymbol}`);
-  
+
   const { name } = tokenDetails;
 
   const totalFans = 564;
