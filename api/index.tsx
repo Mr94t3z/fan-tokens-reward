@@ -621,7 +621,11 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
   const txHash = transactionId || buttonValue;
 
-  try {
+  const isTransactionSuccess = await publicClient.waitForTransactionReceipt({ 
+    hash: txHash as `0x${string}`
+  });
+
+  if (isTransactionSuccess.status === 'success') {
     const transaction = await publicClient.getTransaction({ 
       hash: txHash as `0x${string}`
     });
@@ -653,75 +657,62 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
     const SHARE_BY_USER = `${baseUrl}?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(embedUrlByUser)}`;
 
-    if (transaction) {
-      return c.res({
-        image: (
+    return c.res({
+      image: (
+        <Box
+          gap="16"
+          grow
+          flexDirection="column"
+          background="white"
+          height="100%"
+          padding="48"
+        >
+          <Box>
+            <img src="/moxielogo.png" width="200" height="50" />
+          </Box>
           <Box
-            gap="16"
             grow
-            flexDirection="column"
-            background="white"
-            height="100%"
-            padding="48"
+            alignContent="center"
+            justifyContent="center"
+            alignHorizontal="center"
+            alignVertical="center"
+            gap="16"
           >
-            <Box>
-              <img src="/moxielogo.png" width="200" height="50" />
-            </Box>
-            <Box
-              grow
-              alignContent="center"
-              justifyContent="center"
-              alignHorizontal="center"
-              alignVertical="center"
-              gap="16"
+            <Text
+              size="32"
+              color="fontcolor"
+              font="subtitle_moxie"
+              align="center"
             >
-              <Text
-                size="32"
-                color="fontcolor"
-                font="subtitle_moxie"
-                align="center"
-              >
-                I just burned
+              I just burned
+            </Text>
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+              <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                {totalMoxieBurned} MOXIES
               </Text>
-              <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-                <Text size="48" color="fontcolor" font="title_moxie" align="center">
-                  {totalMoxieBurned} MOXIES
-                </Text>
-              </Box>
-              <Text
-                size="32"
-                color="fontcolor"
-                font="subtitle_moxie"
-                align="center"
-              >
-                for reward {uniqueHolders}
+            </Box>
+            <Text
+              size="32"
+              color="fontcolor"
+              font="subtitle_moxie"
+              align="center"
+            >
+              for reward {uniqueHolders}
+            </Text>
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+              <Text size="48" color="fontcolor" font="title_moxie" align="center">
+                {name} fans
               </Text>
-              <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-                <Text size="48" color="fontcolor" font="title_moxie" align="center">
-                  {name} fans
-                </Text>
-              </Box>
             </Box>
           </Box>
-        ),
-        intents: [
-          <Button.Link href={SHARE_BY_USER}>Share</Button.Link>,
-          <Button action="/">Try again 🔥</Button>,
-        ],
-      });
-    } else {
-      return c.res({
-        imageAspectRatio: "1.91:1",
-        image: '/waiting.gif',
-        intents: [
-          <Button value={txHash} action={`/share-amount/${fanTokenSymbol}`}>
-            Refresh
-          </Button>,
-        ],
-      });
-    }
-  } catch (e) {
-    console.error('Error:', e);
+        </Box>
+      ),
+      intents: [
+        <Button.Link href={SHARE_BY_USER}>Share</Button.Link>,
+        <Button action="/">Try again 🔥</Button>,
+      ],
+    });
+  } else {
     return c.res({
       imageAspectRatio: "1.91:1",
       image: '/waiting.gif',
