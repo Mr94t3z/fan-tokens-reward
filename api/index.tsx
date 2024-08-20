@@ -25,7 +25,7 @@ dotenv.config();
 
 const baseUrl = "https://warpcast.com/~/compose";
 const text = "Reward your Moxie Fans\n\nFrame by @0x94t3z.eth & @thenumb.eth";
-const embedUrl = "https://fan-tokens-reward.vercel.app/api/frame";
+const embedUrl = "https://moxie.0x94t3z.tech/api/frame";
 
 const CAST_INTENS = `${baseUrl}?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(embedUrl)}`;
 
