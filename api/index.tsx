@@ -18,7 +18,6 @@ import { formatUnits, decodeFunctionData } from "viem";
 import { publicClient } from "../lib/viem.js";
 import dotenv from 'dotenv';
 
-
 // Load environment variables from .env file
 dotenv.config();
 
@@ -119,42 +118,6 @@ async function getTokenDetails(fanTokenSymbol: string) {
 
 
 app.frame("/", async (c) => {
-
-  const transaction = await publicClient.getTransaction({ 
-    hash: '0x375343a872dde608462ab4aa25728ebd29b5192ab1cd5afc998c29ca241be410'
-  })
-
-  const inputData = transaction.input;
-
-  const decoded = decodeFunctionData({
-    abi: moxieBondingCurveSmartContract.abi,
-    data: inputData,
-  });
-
-  console.log(decoded);
-
-  // Extracting _depositAmount
-  const _depositAmount = decoded.args[1];
-
-  console.log(_depositAmount); // Outputs: 311160265788953984052n
-
-  // Convert to human-readable format with 18 decimals
-  const humanReadableAmount = formatUnits(_depositAmount, 18);
-
-  console.log(humanReadableAmount); // Outputs: "311.160265788953984052"
-
-  const totalBalance = parseFloat(humanReadableAmount);
-
-  // Format the number with commas and two decimal places
-  const totalMoxieBalance = totalBalance.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-
-
-  console.log(`Total Moxie Balance: ${totalMoxieBalance}`);
-
-
   return c.res({
     image: (
       <Box
