@@ -486,14 +486,14 @@ app.frame("/check-moxie-amount/:fanTokenSymbol", async (c) => {
     maximumFractionDigits: 2
   });
 
-  const address = highestBalanceAddresses[0];
+  const walletAddress = highestBalanceAddresses[0];
 
   const allowance = await moxieSmartContract.read.allowance([
-    address as `0x${string}`,
+    walletAddress as `0x${string}`,
     moxieBondingCurveSmartContract.address,
   ]);
 
-  console.log(`Allowance for ${address}: ${allowance}`);
+  console.log(`Allowance for ${walletAddress}: ${allowance}`);
 
   // Check if allowance is not unlimited
   const isAllowanceFinite = BigInt(allowance) < BigInt('100000000000000000000000000000000'); // Example threshold
@@ -504,19 +504,24 @@ app.frame("/check-moxie-amount/:fanTokenSymbol", async (c) => {
   ] : [
     <TextInput placeholder="Amount of MOXIE to reward" />,
     <Button.Transaction target={`/buy-n-burn-all/${subjectId}`} action={`/share-amount/${fanTokenSymbol}`}>Reward 100%</Button.Transaction>,
-    // <Button action={`/share-amount/${fanTokenSymbol}`}>Reward selected</Button>,
     <Button.Transaction target={`/buy-n-burn-selected/${subjectId}`} action={`/share-amount/${fanTokenSymbol}`}>Reward selected</Button.Transaction>,
   ];
 
   return c.res({
-    image: `/img-moxie-amount/${totalMoxieBalance}/${totalMoxieInUSD}`,
+    image: `/img-moxie-amount/${totalMoxieInUSD}/${walletAddress}/${totalMoxieBalance}`,
     intents,
   });
 });
 
 
-app.image("/img-moxie-amount/:totalMoxieBalance/:totalMoxieInUSD", async (c) => {
-  const { totalMoxieBalance, totalMoxieInUSD } = c.req.param();
+app.image("/img-moxie-amount/:totalMoxieInUSD/:walletAddress/:totalMoxieBalance", async (c) => {
+  const { totalMoxieInUSD, walletAddress, totalMoxieBalance } = c.req.param();
+
+  // Extract the last 4 characters
+  const lastPart = walletAddress.slice(-4);
+
+  // Combine them with the "0x" prefix and ellipsis
+  const shortenedAddress = `Wallet (0x…${lastPart})`;
 
   return c.res({
     image: (
@@ -552,10 +557,20 @@ app.image("/img-moxie-amount/:totalMoxieBalance/:totalMoxieInUSD", async (c) => 
               {totalMoxieInUSD}
             </Text>
           </Box>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="80" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)">
-            <Text size="32" color="fontcolor" font="subtitle_moxie" align="center">
-              M {totalMoxieBalance}{" "}
+          <Box display="flex" flexDirection="row" gap="12">
+            <Text size="16" color="fontcolor" font="subtitle_moxie" align="center">
+              {shortenedAddress}
             </Text>
+            <Box
+              backgroundColor="modal"
+              paddingLeft="18"
+              paddingRight="18"
+              borderRadius="80"
+            >
+              <Text size="16" color="fontcolor" font="subtitle_moxie" align="center">
+                 M {totalMoxieBalance}{" "}
+              </Text>
+            </Box>
           </Box>
           <Text
             size="32"
