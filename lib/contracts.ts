@@ -4,7 +4,7 @@ import { publicClient } from "./viem.js";
 const MOXIE_ADDRESS =
   "0x8C9037D1Ef5c6D1f6816278C7AAF5491d24CD527" as const;
 
-const MOXIE_BODNDING_CURVE_ADDRESS =
+const MOXIE_BONDING_CURVE_ADDRESS =
   "0x373065e66B32a1C428aa14698dFa99BA7199B55E" as const;
 
 const MOXIE_ABI = [
@@ -78,7 +78,7 @@ const MOXIE_ABI = [
   ] as const;
 
 
-const MOXIE_BODNDING_CURVE_ABI = [
+const MOXIE_BONDING_CURVE_ABI = [
     {
       "inputs": [
         {
@@ -128,8 +128,8 @@ const MOXIE_BODNDING_CURVE_ABI = [
   });
 
   export const moxieBondingCurveSmartContractConfig = {
-    address: MOXIE_BODNDING_CURVE_ADDRESS,
-    abi: MOXIE_BODNDING_CURVE_ABI,
+    address: MOXIE_BONDING_CURVE_ADDRESS,
+    abi: MOXIE_BONDING_CURVE_ABI,
   };
   
   export const moxieBondingCurveSmartContract = getContract({
