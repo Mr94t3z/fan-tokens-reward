@@ -750,10 +750,21 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
               font="subtitle_moxie"
               align="center"
             >
-              I just burned
+              I just rewarded
             </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="80" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)">
-              <Text size="32" color="fontcolor" font="subtitle_moxie" align="center">
+            <Box
+              backgroundColor="modal"
+              padding-left="18"
+              paddingRight="18"
+              borderRadius="80"
+              boxShadow="0 0 10px rgba(0, 0, 0, 0.1)"
+            >
+              <Text
+                size="32"
+                color="fontcolor"
+                font="subtitle_moxie"
+                align="center"
+              >
                 M {totalMoxieBurned}{" "}
               </Text>
             </Box>
@@ -763,10 +774,20 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
               font="subtitle_moxie"
               align="center"
             >
-              for reward {uniqueHolders}
+              for {uniqueHolders}
             </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
-              <Text size="48" color="fontcolor" font="title_moxie" align="center">
+            <Box
+              backgroundColor="modal"
+              padding-left="18"
+              paddingRight="18"
+              borderRadius="8"
+            >
+              <Text
+                size="48"
+                color="fontcolor"
+                font="title_moxie"
+                align="center"
+              >
                 {name} fans
               </Text>
             </Box>
