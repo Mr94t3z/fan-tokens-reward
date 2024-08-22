@@ -24,7 +24,7 @@ dotenv.config();
 
 
 const baseUrl = "https://warpcast.com/~/compose";
-const text = "Reward your Moxie Fans\n\nFrame by @0x94t3z.eth & @thenumb.eth";
+const text = "Buy & burn your Fan Tokens to reward your fans!\n\nFrame by @0x94t3z.eth & @thenumb.eth";
 const embedUrl = "https://moxie.0x94t3z.tech/api/frame";
 
 const CAST_INTENS = `${baseUrl}?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(embedUrl)}`;
@@ -161,7 +161,7 @@ app.frame("/", async (c) => {
             </Text>
           </Box>
           <Text
-            size="32"
+            size="24"
             color="fontcolor"
             font="subtitle_moxie"
             align="center"
@@ -718,7 +718,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
     const { name, uniqueHolders } = tokenDetails;
 
-    const shareText = `hihi @betashop.eth @airstack.eth look! I just burned ${totalMoxieBurned} @moxie.eth for reward ${uniqueHolders} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
+    const shareText = `hihi @betashop.eth @airstack.eth look! I just Buy & Burn ${totalMoxieBurned} @moxie.eth for reward ${uniqueHolders} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
 
     const embedUrlByUser = `${embedUrl}/share-by-user/${fanTokenSymbol}/${totalMoxieBurned}`;
 
