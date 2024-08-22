@@ -147,6 +147,7 @@ app.frame("/", async (c) => {
           alignHorizontal="center"
           alignVertical="center"
           gap="16"
+          textAlign="center"
         >
           <Box
             backgroundColor="modal"
@@ -165,7 +166,7 @@ app.frame("/", async (c) => {
             font="subtitle_moxie"
             align="center"
           >
-            buy and burn moxie to reward fans
+            Buy & burn your Fan Tokens to reward your fans!
           </Text>
         </Box>
       </Box>
