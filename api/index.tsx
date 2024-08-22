@@ -152,8 +152,8 @@ app.frame("/", async (c) => {
             backgroundColor="modal"
             padding-left="18"
             padding-right="18"
-            padding-bottom="18"
-            padding-top="18"
+            padding-bottom="8"
+            borderRadius="8"
           >
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               Reward your Fans
@@ -195,12 +195,12 @@ app.frame("/check-by-user", async (c) => {
     if (!tokenDetails) {
       // If no tokenDetails are found, return an error message
       return c.error({
-        message: `There are no Fan Token for @${fid?.username}!`,
+        message: `There are no Fan Token for ${fid?.username}!`,
       });
     }
 
     return c.res({
-      image: `/img-check-by-user/${fanTokenSymbol}`,
+      image: `/img-seach-user-channel/${fanTokenSymbol}`,
       intents: [
         <Button action={`/check-moxie-amount/${fanTokenSymbol}`}>Check amount to reward</Button>,
       ],
@@ -212,130 +212,6 @@ app.frame("/check-by-user", async (c) => {
       message: "There are no Fan Token for @${fid?.username}!",
     });
   }
-});
-
-
-app.image("/img-check-by-user/:fanTokenSymbol", async (c) => {
-  const { fanTokenSymbol } = c.req.param();
-  const isFarcasterID = fanTokenSymbol.startsWith("fid:");
-
-  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
-
-  console.log(`Search Results for ${fanTokenSymbol}`);
-
-  // Ensure the fanTokenSymbol is correctly prefixed
-  const formattedSymbol = fanTokenSymbol.startsWith('fid:')
-  ? fanTokenSymbol.slice(4) // Remove 'fid:' prefix
-  : fanTokenSymbol;
-
-  // Destructure the tokenDetails to extract individual variables
-  const { name, uniqueHolders } = tokenDetails;
-
-  // Initialize imageFanToken
-  let imageFanToken: string | null = null;
-
-  if (isFarcasterID) {
-    // Define the GraphQL query to search for the user image by FID
-    const searchUserImageByFid = `
-      query SearchUserImageByFid {
-        Socials(
-          input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${formattedSymbol}"}}, blockchain: ethereum}
-        ) {
-          Social {
-            profileImage
-          }
-        }
-      }
-    `;
-
-    // Fetch the user image URL
-    const response = await fetchQuery(searchUserImageByFid);
-    
-    const data = response?.data;
-
-    // Check if Socials exists and has at least one result
-    imageFanToken = data?.Socials?.Social?.[0]?.profileImage;
-
-    if (imageFanToken) {
-      console.log(`User Image URL: ${imageFanToken}`);
-    } else {
-      console.log(`No image found for user ${name}`);
-    }
-  }
-
-  return c.res({
-    image: (
-      <Box
-        gap="16"
-        grow
-        flexDirection="column"
-        background="white"
-        height="100%"
-        padding="48"
-      >
-        <Box>
-          <img src="/moxielogo.png" width="200" height="50" />
-        </Box>
-        <Box
-          grow
-          alignContent="center"
-          justifyContent="center"
-          alignHorizontal="center"
-          alignVertical="center"
-          gap="16"
-        >
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-
-            <img
-                  height="200"
-                  width="200"
-                  src={imageFanToken ?? ""}
-                  style={{
-                    borderRadius: "50%",
-                  }}
-                />
-
-          </Box>
-          <Text
-            size="32"
-            color="fontcolor"
-            font="subtitle_moxie"
-            align="center"
-          >
-            {name}
-          </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {uniqueHolders} fans
-            </Text>
-          </Box>
-          {/* <Text
-            size="20"
-            color="fontcolor"
-            font="subtitle_moxie"
-            align="center"
-          >
-            Your Balance:
-          </Text>
-          <Box display="flex" flexDirection="row" gap="16">
-            <Text color="fontcolor" font="subtitle_moxie" align="center">
-              Wallet: (0x85…rt748)
-            </Text>
-            <Box
-              backgroundColor="modal"
-              paddingLeft="18"
-              paddingRight="18"
-              borderRadius="80"
-            >
-              <Text color="fontcolor" font="subtitle_moxie" align="center">
-                M 2,345,75{" "}
-              </Text>
-            </Box>
-          </Box> */}
-        </Box>
-      </Box>
-    ),
-  });
 });
 
 
@@ -523,14 +399,14 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           alignVertical="center"
           gap="16"
         >
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+          <Box backgroundColor="modal" borderRadius="60" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)" >
 
             <img
                   height="200"
                   width="200"
                   src={imageFanToken ?? ""}
                   style={{
-                    borderRadius: "50%",
+                    borderRadius: "52%",
                   }}
                 />
 
@@ -543,34 +419,11 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           >
             {name}
           </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               {uniqueHolders} fans
             </Text>
           </Box>
-          {/* <Text
-            size="20"
-            color="fontcolor"
-            font="subtitle_moxie"
-            align="center"
-          >
-            Your Balance:
-          </Text>
-          <Box display="flex" flexDirection="row" gap="16">
-            <Text color="fontcolor" font="subtitle_moxie" align="center">
-              Wallet: (0x85…rt748)
-            </Text>
-            <Box
-              backgroundColor="modal"
-              paddingLeft="18"
-              paddingRight="18"
-              borderRadius="80"
-            >
-              <Text color="fontcolor" font="subtitle_moxie" align="center">
-                M 2,345,75{" "}
-              </Text>
-            </Box>
-          </Box> */}
         </Box>
       </Box>
     ),
@@ -694,14 +547,14 @@ app.image("/img-moxie-amount/:totalMoxieBalance/:totalMoxieInUSD", async (c) => 
           >
             You have
           </Text>
-          <Box backgroundColor="modal" paddingLeft="18" paddingRight="18">
+          <Box backgroundColor="modal" paddingLeft="18" paddingRight="18" borderRadius="8">
             <Text size="64" color="fontcolor" font="title_moxie" align="center">
               {totalMoxieInUSD}
             </Text>
           </Box>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {totalMoxieBalance} MOXIES
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="80" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)">
+            <Text size="32" color="fontcolor" font="subtitle_moxie" align="center">
+              M {totalMoxieBalance}{" "}
             </Text>
           </Box>
           <Text
@@ -884,9 +737,9 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
             >
               I just burned
             </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-              <Text size="48" color="fontcolor" font="title_moxie" align="center">
-                {totalMoxieBurned} MOXIES
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="80" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)">
+              <Text size="32" color="fontcolor" font="subtitle_moxie" align="center">
+                M {totalMoxieBurned}{" "}
               </Text>
             </Box>
             <Text
@@ -897,7 +750,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
             >
               for reward {uniqueHolders}
             </Text>
-            <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+            <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
               <Text size="48" color="fontcolor" font="title_moxie" align="center">
                 {name} fans
               </Text>
@@ -962,9 +815,9 @@ app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
           >
             I just burned
           </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
-            <Text size="48" color="fontcolor" font="title_moxie" align="center">
-              {totalMoxieBurned} MOXIES
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="80" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)">
+            <Text size="32" color="fontcolor" font="subtitle_moxie" align="center">
+              M {totalMoxieBurned}{" "}
             </Text>
           </Box>
           <Text
@@ -975,7 +828,7 @@ app.frame("/share-by-user/:fanTokenSymbol/:totalMoxieBurned", async (c) => {
           >
             for reward {uniqueHolders}
           </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18">
+          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               {name} fans
             </Text>
