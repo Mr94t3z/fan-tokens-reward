@@ -718,7 +718,7 @@ app.frame("/share-amount/:fanTokenSymbol", async (c) => {
 
     const { name, uniqueHolders } = tokenDetails;
 
-    const shareText = `hihi @betashop.eth @airstack.eth look! I just Buy & Burn ${totalMoxieBurned} @moxie.eth for reward ${uniqueHolders} ${name} fan.\n\nFrame by @0x94t3z.eth & @thenumb.eth`;
+    const shareText = `I just burned ${totalMoxieBurned} MOXIE for rewarding my ${uniqueHolders} Fan Token (${name}) Holders.\n\nNice Frame @0x94t3z.eth & @thenumb.eth 👏 👏 @moxie.eth`;
 
     const embedUrlByUser = `${embedUrl}/share-by-user/${fanTokenSymbol}/${totalMoxieBurned}`;
 
