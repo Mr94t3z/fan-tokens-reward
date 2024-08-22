@@ -417,7 +417,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
             font="subtitle_moxie"
             align="center"
           >
-            {name}
+            {isChannel ? `Channel: ${name}` : name}
           </Text>
           <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
