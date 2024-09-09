@@ -238,51 +238,38 @@ app.frame("/search-user-channel", async (c) => {
 
   let fanTokenSymbol;
 
-  // Check if user data is found and set the fanTokenSymbol
+  // Check if user data is found and set the fanTokenSymbol to fid
   if (userData?.Socials?.Social?.length > 0) {
     const farcasterId = userData.Socials.Social[0].userId;
     console.log(farcasterId);
     fanTokenSymbol = `fid:${farcasterId}`;
   } else {
-    // Query to search for the channel by name if no user is found
-    const searchFarcasterChannelByName = `
-      query SearchFarcasterChannelByName {
-        FarcasterChannels(
-          input: {filter: {name: {_eq: "${inputText}"}}, blockchain: ALL, limit: 50}
-        ) {
-          FarcasterChannel {
-            name
-          }
-        }
-      }
-    `;
-
-    // Fetch the channel data
-    const channelResponse = await fetchQuery(searchFarcasterChannelByName);
-    const channelData = channelResponse?.data;
-
-    if (channelData?.FarcasterChannels?.FarcasterChannel?.length > 0) {
-      const channelName = channelData.FarcasterChannels.FarcasterChannel[0].name;
-      console.log(channelName);
-      fanTokenSymbol = `cid:${channelName}`;
-    }
+    // Fallback to cid immediately if no user is found
+    fanTokenSymbol = `cid:${inputText}`;
   }
 
-  // Execute the query with the correct symbol (fid or cid)
   try {
-    const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+    let tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+
+    // If tokenDetails not found for fid, switch to cid
+    if (!tokenDetails && fanTokenSymbol.startsWith("fid:")) {
+      console.log(`Token not found for fid, trying cid:${inputText}...`);
+
+      // Retry with cid:{inputText} if fid search fails
+      fanTokenSymbol = `cid:${inputText}`;
+      tokenDetails = await getTokenDetails(fanTokenSymbol);
+    }
 
     console.log(`Search Results for ${inputText}`);
 
     if (!tokenDetails) {
-      // If no tokenDetails are found, return an error message
       return c.error({
-        message: `There are no Fan Token for ${inputText}!`,
+        message: `There are no Fan Tokens for ${inputText}!`,
       });
     }
 
     return c.res({
-      image: `/img-seach-user-channel/${fanTokenSymbol}`,
+      image: `/img-search-user-channel/${fanTokenSymbol}`,
       intents: [
         <Button action={`/check-moxie-amount/${fanTokenSymbol}`}>
           Check amount to reward
@@ -299,86 +286,99 @@ app.frame("/search-user-channel", async (c) => {
 });
 
 
-app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
+app.image("/img-search-user-channel/:fanTokenSymbol", async (c) => {
   const { fanTokenSymbol } = c.req.param();
 
   // Determine whether the input is a channel or a fan token
   const isChannel = fanTokenSymbol.startsWith("cid:");
   const isFarcasterID = fanTokenSymbol.startsWith("fid:");
 
-  // Ensure the fanTokenSymbol is correctly prefixed
+  // Ensure the fanTokenSymbol is correctly prefixed and remove the `cid:` or `fid:` prefix
   const formattedSymbol = isChannel
     ? fanTokenSymbol.slice(4) // Remove 'cid:' prefix
     : isFarcasterID
     ? fanTokenSymbol.slice(4) // Remove 'fid:' prefix
     : fanTokenSymbol;
 
-  const tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+  let tokenDetails;
+  try {
+    // Fetch token details using the fanTokenSymbol
+    tokenDetails = await getTokenDetails(fanTokenSymbol || "");
+  } catch (error) {
+    console.error(`Error fetching token details for ${fanTokenSymbol}:`, error);
+  }
 
   console.log(`Search Results for ${fanTokenSymbol}`);
 
   // Destructure the tokenDetails to extract individual variables
-  const { name, uniqueHolders } = tokenDetails;
+  const { name, uniqueHolders } = tokenDetails || {};
 
   // Initialize imageFanToken
   let imageFanToken: string | null = null;
 
   if (isChannel) {
-    // Define the GraphQL query to search for the channel image by CID
-    const searchChannelImageByCid = `
-      query SearchChannelImageByCid {
-        FarcasterChannels(
-          input: {blockchain: ALL, filter: {channelId: {_eq: "${formattedSymbol}"}}}
-        ) {
-          FarcasterChannel {
-            imageUrl
+    try {
+      // Define the GraphQL query to search for the channel image by CID
+      const searchChannelImageByCid = `
+        query SearchChannelImageByCid {
+          FarcasterChannels(
+            input: {blockchain: ALL, filter: {channelId: {_eq: "${formattedSymbol}"}}}
+          ) {
+            FarcasterChannel {
+              imageUrl
+            }
           }
         }
+      `;
+
+      // Fetch the channel image URL
+      const response = await fetchQuery(searchChannelImageByCid);
+      const data = response?.data;
+
+      // Check if FarcasterChannels exists and has at least one result
+      imageFanToken = data?.FarcasterChannels?.FarcasterChannel?.[0]?.imageUrl;
+
+      if (imageFanToken) {
+        console.log(`Channel Image URL: ${imageFanToken}`);
+      } else {
+        console.log(`No image found for channel ${name}`);
       }
-    `;
-
-    // Fetch the channel image URL
-    const response = await fetchQuery(searchChannelImageByCid);
-    
-    const data = response?.data;
-
-    // Check if FarcasterChannels exists and has at least one result
-    imageFanToken = data?.FarcasterChannels?.FarcasterChannel?.[0]?.imageUrl;
-
-    if (imageFanToken) {
-      console.log(`Channel Image URL: ${imageFanToken}`);
-    } else {
-      console.log(`No image found for channel ${name}`);
+    } catch (error) {
+      console.error(`Error fetching channel image: ${error}`);
     }
   } else if (isFarcasterID) {
-    // Define the GraphQL query to search for the user image by FID
-    const searchUserImageByFid = `
-      query SearchUserImageByFid {
-        Socials(
-          input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${formattedSymbol}"}}, blockchain: ethereum}
-        ) {
-          Social {
-            profileImage
+    try {
+      // Define the GraphQL query to search for the user image by FID
+      const searchUserImageByFid = `
+        query SearchUserImageByFid {
+          Socials(
+            input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${formattedSymbol}"}}, blockchain: ethereum}
+          ) {
+            Social {
+              profileImage
+            }
           }
         }
+      `;
+
+      // Fetch the user image URL
+      const response = await fetchQuery(searchUserImageByFid);
+      const data = response?.data;
+
+      // Check if Socials exists and has at least one result
+      imageFanToken = data?.Socials?.Social?.[0]?.profileImage;
+
+      if (imageFanToken) {
+        console.log(`User Image URL: ${imageFanToken}`);
+      } else {
+        console.log(`No image found for user ${name}`);
       }
-    `;
-
-    // Fetch the user image URL
-    const response = await fetchQuery(searchUserImageByFid);
-    
-    const data = response?.data;
-
-    // Check if Socials exists and has at least one result
-    imageFanToken = data?.Socials?.Social?.[0]?.profileImage;
-
-    if (imageFanToken) {
-      console.log(`User Image URL: ${imageFanToken}`);
-    } else {
-      console.log(`No image found for user ${name}`);
+    } catch (error) {
+      console.error(`Error fetching user image: ${error}`);
     }
   }
 
+  // Return the image and token information
   return c.res({
     image: (
       <Box
@@ -403,13 +403,13 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           <Box backgroundColor="modal" borderRadius="60" boxShadow="0 0 10px rgba(0, 0, 0, 0.1)" >
 
             <img
-                  height="200"
-                  width="200"
-                  src={imageFanToken ?? ""}
-                  style={{
-                    borderRadius: "52%",
-                  }}
-                />
+              height="200"
+              width="200"
+              src={imageFanToken ?? ""}
+              style={{
+                borderRadius: "52%",
+              }}
+            />
 
           </Box>
           <Text
@@ -420,7 +420,7 @@ app.image("/img-seach-user-channel/:fanTokenSymbol", async (c) => {
           >
             {isChannel ? `Channel: ${name}` : name}
           </Text>
-          <Box backgroundColor="modal" padding-left="18" paddingRight="18" borderRadius="8">
+          <Box backgroundColor="modal" paddingLeft="18" paddingRight="18" borderRadius="8">
             <Text size="48" color="fontcolor" font="title_moxie" align="center">
               {uniqueHolders} fans
             </Text>
