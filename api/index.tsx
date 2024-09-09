@@ -264,7 +264,7 @@ app.frame("/search-user-channel", async (c) => {
 
     if (!tokenDetails) {
       return c.error({
-        message: `There are no Fan Tokens for ${inputText}!`,
+        message: `There are no Fan Token for ${inputText}!`,
       });
     }
 
