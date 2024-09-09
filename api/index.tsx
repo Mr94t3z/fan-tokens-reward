@@ -201,7 +201,7 @@ app.frame("/check-by-user", async (c) => {
     }
 
     return c.res({
-      image: `/img-seach-user-channel/${fanTokenSymbol}`,
+      image: `/img-search-user-channel/${fanTokenSymbol}`,
       intents: [
         <Button action={`/check-moxie-amount/${fanTokenSymbol}`}>Check amount to reward</Button>,
       ],
